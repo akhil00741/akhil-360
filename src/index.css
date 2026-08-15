@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ios-bg: #F2F2F7;
+  --color-ios-card: #FFFFFF;
+  --color-ios-cardSecondary: #F8F9FA;
+  --color-ios-border: #E5E5EA;
+  --color-ios-blue: #007AFF;
+  --color-ios-green: #34C759;
+  --color-ios-indigo: #5856D6;
+  --color-ios-orange: #FF9500;
+  --color-ios-pink: #FF2D55;
+  --color-ios-purple: #AF52DE;
+  --color-ios-red: #FF3B30;
+  --color-ios-teal: #30B0C7;
+  --color-ios-yellow: #FFCC00;
+  --color-ios-gray: #8E8E93;
+  --color-ios-gray2: #AEAEB2;
+  --color-ios-gray3: #C7C7CC;
+  --color-ios-gray4: #D1D1D6;
+  --color-ios-gray5: #E5E5EA;
+  --color-ios-gray6: #F2F2F7;
+
+  --shadow-glass: 0 8px 30px rgba(0, 0, 0, 0.05);
+  --shadow-ios: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --shadow-glow-blue: 0 4px 14px rgba(0, 122, 255, 0.25);
+  --shadow-glow-green: 0 4px 14px rgba(52, 199, 89, 0.25);
+  --shadow-glow-amber: 0 4px 14px rgba(255, 149, 0, 0.25);
+  --shadow-glow-red: 0 4px 14px rgba(255, 59, 48, 0.25);
+}
+
+:root {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #F2F2F7;
+  color: #1C1C1E;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  padding-top: env(safe-area-inset-top, 0px);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dark body {
+  background-color: #000000;
+  color: #F2F2F7;
+}
+
+/* Allow selection in inputs and textareas */
+input, textarea, [contenteditable="true"], code {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Apple Light iOS Glass Effect */
+.ios-glass {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dark .ios-glass {
+  background: rgba(28, 28, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ios-glass-header {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dark .ios-glass-header {
+  background: rgba(18, 18, 20, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ios-glass-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.dark .ios-glass-card {
+  background: rgba(28, 28, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.ios-glass-card-interactive {
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .ios-glass-card-interactive {
+  background: rgba(28, 28, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ios-glass-card-interactive:active {
+  transform: scale(0.985);
+  background: #F8F9FA;
+}
+
+.dark .ios-glass-card-interactive:active {
+  background: rgba(44, 44, 46, 0.95);
+}
+
+/* Hide scrollbar for clean iOS feel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area insets */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 16px), 16px);
+}
+
+.safe-top {
+  padding-top: max(env(safe-area-inset-top, 12px), 12px);
+}
+
+/* Smooth modal animations */
+@keyframes sheetSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-sheet-up {
+  animation: sheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
