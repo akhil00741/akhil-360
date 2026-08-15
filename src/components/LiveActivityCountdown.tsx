@@ -10,7 +10,7 @@ interface LiveActivityCountdownProps {
 }
 
 export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ upcomingShoot, onOpenShoot }) => {
-  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number; isPast: boolean } | null>(null);
+  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number; totalMinutes: number; isPast: boolean } | null>(null);
   const [notifSent, setNotifSent] = useState(false);
 
   useEffect(() => {
@@ -25,15 +25,16 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
       const diff = targetTime - now;
 
       if (diff <= 0) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isPast: true });
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, totalMinutes: 0, isPast: true });
         return;
       }
 
+      const totalMinutes = Math.floor(diff / (1000 * 60));
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setTimeLeft({ hours, minutes, seconds, isPast: false });
+      setTimeLeft({ hours, minutes, seconds, totalMinutes, isPast: false });
     };
 
     calculateTime();
@@ -41,41 +42,58 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
     return () => clearInterval(timer);
   }, [upcomingShoot]);
 
-  const handleTriggerTestNotification = (e: React.MouseEvent) => {
+  const handleTriggerImmediateNotification = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!upcomingShoot || !timeLeft) return;
-    const venue = upcomingShoot.events?.[0]?.venue || upcomingShoot.location || 'Studio';
+    const venue = upcomingShoot.events?.[0]?.venue || upcomingShoot.location || 'Main Venue';
+    const shootTime = upcomingShoot.events?.[0]?.startTime || '11:00';
 
-    let alertTitle = '🚦 AKHIL 360 (Live Traffic Alert)';
-    let alertBody = `Countdown: ${timeLeft.hours > 0 ? `${timeLeft.hours}h ` : ''}${timeLeft.minutes}m left until ${upcomingShoot.title} at ${venue}. Head out now to beat traffic!`;
+    const title = `⏰ ${timeLeft.totalMinutes} Minutes Left: ${upcomingShoot.title}`;
+    const body = `Starts at ${shootTime} (${timeLeft.hours > 0 ? `${timeLeft.hours}h ` : ''}${timeLeft.minutes}m remaining) at ${venue}. Check live traffic & beat the rush!`;
 
-    if (timeLeft.hours >= 4) {
-      alertTitle = '🚦 AKHIL 360 (4-Hour Alert): Early Prep';
-      alertBody = `4 hours until ${upcomingShoot.title} at ${venue}. Check batteries, memory cards & live traffic!`;
-    } else if (timeLeft.hours >= 2) {
-      alertTitle = '🚗 AKHIL 360 (2-Hour Alert): Departure Advisory';
-      alertBody = `2 hours remaining until ${upcomingShoot.title} at ${venue}. Time to start driving to beat rush-hour delays.`;
-    } else if (timeLeft.hours < 1) {
-      alertTitle = '⏰ AKHIL 360 (Final Alert): Arrival & Setup';
-      alertBody = `Only ${timeLeft.minutes} minutes remaining until ${upcomingShoot.title} starts at ${venue}!`;
-    }
-
-    if ('Notification' in window) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          new Notification(alertTitle, {
-            body: alertBody,
+    const sendNativeNotif = () => {
+      // 1. Try Service Worker for Native iOS Lock Screen Notification
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.showNotification(title, {
+            body: body,
             icon: './apple-touch-icon.png',
             badge: './favicon.png',
-          });
-          setNotifSent(true);
-          setTimeout(() => setNotifSent(false), 3000);
-        } else {
-          alert('Please allow notifications in Safari Settings to receive lock screen alerts.');
-        }
-      });
+            vibrate: [200, 100, 200],
+            tag: 'shoot-countdown',
+          } as NotificationOptions);
+        });
+      }
+
+      // 2. Standard Web Notification fallback
+      try {
+        new Notification(title, {
+          body: body,
+          icon: './apple-touch-icon.png',
+          badge: './favicon.png',
+        });
+      } catch (err) {
+        console.log('Standard notif error, handled by SW:', err);
+      }
+
+      setNotifSent(true);
+      setTimeout(() => setNotifSent(false), 3500);
+    };
+
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        sendNativeNotif();
+      } else {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            sendNativeNotif();
+          } else {
+            alert('Please enable notifications in iPhone Settings ➔ Safari / AKHIL 360 to see lock screen banners.');
+          }
+        });
+      }
     } else {
-      alert('Lock screen notifications will fire automatically from your Apple Calendar before the shoot.');
+      alert('Your browser does not support web notifications directly. Please use "Sync Apple Cal" for lock screen alarms.');
     }
   };
 
@@ -120,7 +138,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         <div className="flex items-center space-x-1.5 bg-zinc-800/80 px-2.5 py-1 rounded-full border border-zinc-700">
           <Clock className="w-3 h-3 text-emerald-400" />
           <span className="text-[11px] font-mono font-bold text-emerald-400">
-            {timeLeft.isPast ? 'IN PROGRESS' : timeLeft.hours === 1 ? '1 HOUR TO SHOOT' : timeLeft.hours === 0 ? `${timeLeft.minutes}M TO SHOOT` : 'COUNTDOWN'}
+            {timeLeft.isPast ? 'IN PROGRESS' : `${timeLeft.totalMinutes} MIN TO GO`}
           </span>
         </div>
       </div>
@@ -179,12 +197,12 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
-            onClick={handleTriggerTestNotification}
-            className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-zinc-700 text-[11px]"
-            title="Test Lock Screen Banner Notification"
+            onClick={handleTriggerImmediateNotification}
+            className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 border border-amber-500/40 text-xs"
+            title="Trigger Immediate Minutes Countdown Notification to Lock Screen"
           >
-            <Bell className="w-3 h-3 text-amber-400" />
-            <span>{notifSent ? '✅ Alert Sent!' : '🔔 Test Alert'}</span>
+            <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+            <span>{notifSent ? '✅ Alert Fired!' : '🔔 Notify Minutes Now'}</span>
           </button>
 
           <button
