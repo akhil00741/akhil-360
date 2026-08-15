@@ -1,14 +1,21 @@
 import { Shoot, ShootEventSlot } from '../types/shoot';
 
-// Helper to format date to iCal UTC format (YYYYMMDDTHHmmssZ)
+// Helper to format date to iCal Local Time (YYYYMMDDTHHmmss) without UTC offset shifting
 const formatToICalDate = (dateStr: string, timeStr = '09:00'): string => {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  const d = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-  return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  if (!dateStr) return '20260815T090000';
+  const parts = dateStr.split('-');
+  const timeParts = (timeStr || '09:00').split(':');
+  
+  const y = parts[0] || '2026';
+  const m = (parts[1] || '08').padStart(2, '0');
+  const d = (parts[2] || '15').padStart(2, '0');
+  const hh = (timeParts[0] || '09').padStart(2, '0');
+  const mm = (timeParts[1] || '00').padStart(2, '0');
+
+  return `${y}${m}${d}T${hh}${mm}00`;
 };
 
-// Generate iCal string with 4-Hour, 2-Hour, and 1-Hour Apple Alarms (VALARM)
+// Generate iCal string with accurate local time and 4-Hour / 2-Hour Alarms
 export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Photography Shoots'): string => {
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -21,7 +28,7 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
   ];
 
   shoots.forEach((shoot) => {
-    // If shoot has specific events, create VEVENT for each slot with 4-Hour and 2-Hour Alarms
+    // If shoot has specific events, create VEVENT for each slot
     if (shoot.events && shoot.events.length > 0) {
       shoot.events.forEach((evt) => {
         const dtStart = formatToICalDate(evt.date || shoot.primaryDate, evt.startTime || '09:00');
@@ -31,8 +38,8 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
         lines.push('BEGIN:VEVENT');
         lines.push(`UID:${uid}`);
         lines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`);
-        lines.push(`DTSTART:${dtStart}`);
-        lines.push(`DTEND:${dtEnd}`);
+        lines.push(`DTSTART;TZID=Asia/Kolkata:${dtStart}`);
+        lines.push(`DTEND;TZID=Asia/Kolkata:${dtEnd}`);
         lines.push(`SUMMARY:📸 ${shoot.category}: ${shoot.title} (${evt.name})`);
         lines.push(`DESCRIPTION:Client: ${shoot.clientName}\\nPhone: ${shoot.clientPhone}\\nVenue: ${evt.venue || shoot.location}\\nTotal: ₹${shoot.totalAmount}\\nAdvance Paid: ₹${shoot.advanceAmount}\\nBalance Due: ₹${shoot.balanceAmount}\\nwfolio: ${shoot.wfolioUrl || 'None'}`);
         lines.push(`LOCATION:${evt.venue || shoot.location || 'Studio'}`);
@@ -69,8 +76,8 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
       lines.push('BEGIN:VEVENT');
       lines.push(`UID:${uid}`);
       lines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`);
-      lines.push(`DTSTART:${dtStart}`);
-      lines.push(`DTEND:${dtEnd}`);
+      lines.push(`DTSTART;TZID=Asia/Kolkata:${dtStart}`);
+      lines.push(`DTEND;TZID=Asia/Kolkata:${dtEnd}`);
       lines.push(`SUMMARY:📸 ${shoot.category}: ${shoot.title}`);
       lines.push(`DESCRIPTION:Client: ${shoot.clientName}\\nPhone: ${shoot.clientPhone}\\nVenue: ${shoot.location}\\nTotal: ₹${shoot.totalAmount}\\nAdvance Paid: ₹${shoot.advanceAmount}\\nBalance: ₹${shoot.balanceAmount}\\nwfolio: ${shoot.wfolioUrl || 'None'}`);
       lines.push(`LOCATION:${shoot.location || 'Studio'}`);
