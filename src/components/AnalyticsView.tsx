@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useShoots } from '../context/ShootContext';
 import { 
-  BarChart3, TrendingUp, DollarSign, PieChart, 
+  BarChart3, TrendingUp, IndianRupee, PieChart, 
   ArrowUpRight, Award, User, Building, RefreshCw, 
   Download, CheckCircle2, Shield, Banknote, CreditCard, Landmark, Smartphone 
 } from 'lucide-react';
@@ -120,9 +120,9 @@ export const AnalyticsView: React.FC = () => {
         {/* Realized Cash Inflow */}
         <div className="p-5 rounded-3xl ios-glass-card space-y-2 relative overflow-hidden border-emerald-200/80 dark:border-emerald-900/30">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Collected Income</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <DollarSign className="w-4 h-4" />
+            <span className="text-xs font-bold text-zinc-500">Collected Income (₹)</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+              <IndianRupee className="w-4 h-4" />
             </div>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400">

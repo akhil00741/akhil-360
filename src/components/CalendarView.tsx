@@ -6,7 +6,7 @@ import {
 } from 'date-fns';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, 
-  MapPin, DollarSign, Plus, User, Building, ExternalLink, 
+  MapPin, IndianRupee, Plus, User, Building, ExternalLink, 
   Download, Upload, CheckCircle2 
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/helpers';

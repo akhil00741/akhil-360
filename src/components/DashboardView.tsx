@@ -3,7 +3,7 @@ import { useShoots } from '../context/ShootContext';
 import { 
   Calendar, AlertTriangle, Plus, Shield, 
   Clock, CheckCircle2, Globe, MessageSquare, 
-  ChevronRight, DollarSign, Sparkles, Banknote, Landmark, Smartphone, Wallet 
+  ChevronRight, IndianRupee, Sparkles, Banknote, Landmark, Smartphone, Wallet 
 } from 'lucide-react';
 import { formatCurrency, formatDate, calculateRetentionStatus } from '../utils/helpers';
 
@@ -159,7 +159,7 @@ export const DashboardView: React.FC = () => {
               <span>Pending Balance</span>
             </span>
             <span className="p-1 rounded-md bg-rose-50 text-rose-600">
-              <DollarSign className="w-3.5 h-3.5" />
+              <IndianRupee className="w-3.5 h-3.5" />
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-black font-mono text-rose-600 tracking-tight">
@@ -179,7 +179,7 @@ export const DashboardView: React.FC = () => {
               <span>Total Billed</span>
             </span>
             <span className="p-1 rounded-md bg-zinc-100 text-zinc-600">
-              <DollarSign className="w-3.5 h-3.5" />
+              <IndianRupee className="w-3.5 h-3.5" />
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-black font-mono text-zinc-900 tracking-tight">

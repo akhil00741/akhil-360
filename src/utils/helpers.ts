@@ -64,20 +64,20 @@ export const calculateRetentionStatus = (shoot: Shoot): RetentionStatus | null =
   const isExpired = daysLeft <= 0;
 
   let urgency: 'safe' | 'warning' | 'critical' | 'expired' = 'safe';
-  let badgeColor = 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60';
+  let badgeColor = 'bg-emerald-50 text-emerald-800 border-emerald-200';
   let badgeText = `${daysLeft} Days Hold`;
 
   if (isExpired) {
     urgency = 'expired';
-    badgeColor = 'bg-red-950/80 text-red-400 border-red-700/80 animate-pulse';
+    badgeColor = 'bg-red-50 text-red-700 border-red-200 animate-pulse';
     badgeText = 'Clearance Due!';
   } else if (daysLeft <= 5) {
     urgency = 'critical';
-    badgeColor = 'bg-rose-950/70 text-rose-400 border-rose-700/70';
+    badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
     badgeText = `${daysLeft}d Final Notice`;
   } else if (daysLeft <= 14) {
     urgency = 'warning';
-    badgeColor = 'bg-amber-950/70 text-amber-300 border-amber-700/70';
+    badgeColor = 'bg-amber-50 text-amber-800 border-amber-200';
     badgeText = `${daysLeft} Days Left`;
   }
 

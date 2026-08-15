@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useShoots } from '../context/ShootContext';
 import { Shoot, ShootCategory, ShootType, ShootStatus, ShootEventSlot, PaymentMethod } from '../types/shoot';
-import { X, Plus, Trash2, Calendar, Clock, DollarSign, Globe, Shield, User, Building, MapPin, Camera, Banknote } from 'lucide-react';
+import { X, Plus, Trash2, Calendar, Clock, IndianRupee, Globe, Shield, User, Building, MapPin, Camera, Banknote, Landmark, Smartphone, CreditCard, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '../utils/helpers';
 
@@ -25,13 +25,13 @@ const CATEGORIES: ShootCategory[] = [
   'Other',
 ];
 
-const PAYMENT_METHODS: PaymentMethod[] = [
-  'Cash',
-  'UPI',
-  'Bank Transfer',
-  'Card',
-  'Cheque',
-  'Other',
+const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.FC<{ className?: string }> }[] = [
+  { id: 'Cash', label: '💵 Cash', icon: Banknote },
+  { id: 'UPI', label: '📱 UPI (GPay/PhonePe)', icon: Smartphone },
+  { id: 'Bank Transfer', label: '🏦 Bank IMPS/NEFT', icon: Landmark },
+  { id: 'Card', label: '💳 Card / POS', icon: CreditCard },
+  { id: 'Cheque', label: '📝 Cheque', icon: FileText },
+  { id: 'Other', label: '✨ Other', icon: Banknote },
 ];
 
 export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) => {
@@ -55,7 +55,7 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
   const [location, setLocation] = useState(shootToEdit?.location || '');
   const [primaryDate, setPrimaryDate] = useState(shootToEdit?.primaryDate || todayStr);
 
-  // Financials & Payment Types
+  // Financials & Payment Types (in Rupees)
   const [totalAmount, setTotalAmount] = useState<number>(shootToEdit?.totalAmount || 0);
   const [advanceAmount, setAdvanceAmount] = useState<number>(shootToEdit?.advanceAmount || 0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(shootToEdit?.primaryPaymentMethod || 'Cash');
@@ -98,27 +98,23 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
         name: `Session ${prev.length + 1}`,
         date: primaryDate,
         startTime: '16:00',
-        endTime: '20:00',
+        endTime: '21:00',
         venue: location || 'Venue',
         allocatedIncome: 0,
       },
     ]);
   };
 
-  const handleUpdateEvent = (id: string, field: keyof ShootEventSlot, value: any) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
-  };
-
   const handleRemoveEvent = (id: string) => {
-    if (events.length <= 1) return;
+    if (events.length <= 1) {
+      alert('A shoot must have at least one scheduled session.');
+      return;
+    }
     setEvents(prev => prev.filter(e => e.id !== id));
   };
 
-  const autoSumEvents = () => {
-    const sum = events.reduce((acc, curr) => acc + (Number(curr.allocatedIncome) || 0), 0);
-    if (sum > 0) {
-      setTotalAmount(sum);
-    }
+  const handleUpdateEvent = (id: string, field: keyof ShootEventSlot, val: any) => {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, [field]: val } : e));
   };
 
   const balanceAmount = Math.max(0, totalAmount - advanceAmount);
@@ -131,7 +127,11 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
       return;
     }
     if (!clientName.trim()) {
-      alert('Please enter a client name');
+      alert('Please enter client name');
+      return;
+    }
+    if (totalAmount <= 0) {
+      alert('Please enter total shoot package amount in Rupees (₹)');
       return;
     }
 
@@ -184,9 +184,9 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
         payments: advanceAmount > 0 ? [{
           id: `pay-${Date.now()}`,
           amount: advanceAmount,
-          date: todayStr,
+          date: primaryDate,
           method: paymentMethod,
-          notes: 'Advance at registry',
+          notes: 'Advance Booking Deposit',
         }] : [],
         status,
         bookedAt: todayStr,
@@ -206,511 +206,517 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/35 backdrop-blur-xs">
       <div 
-        className="w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col animate-sheet-up overflow-hidden"
+        className="w-full max-w-2xl bg-white border border-zinc-200/90 rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col animate-sheet-up overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* iOS Grabber Pill */}
+        <div className="w-12 h-1.5 rounded-full bg-zinc-300 mx-auto mt-2.5 sm:hidden" />
+
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60 sticky top-0 z-10">
+        <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between bg-white sticky top-0 z-10">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-ios-blue/20 border border-blue-200 dark:border-ios-blue/30 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
               <Camera className="w-5 h-5 text-ios-blue" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-zinc-900 dark:text-white">
+              <h2 className="text-base font-extrabold text-zinc-900">
                 {shootToEdit ? 'Edit Shoot Entry' : 'New Shoot Registration'}
               </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">AKHIL 360 Shoot & Revenue Registry</p>
+              <p className="text-xs text-zinc-500 font-medium">AKHIL 360 Studio Registry</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 flex items-center justify-center transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6 overflow-y-auto max-h-[calc(92vh-140px)]">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6 overflow-y-auto max-h-[calc(92vh-130px)]">
           
           {/* Shoot Type Toggle (Own vs Third Party) */}
           <div>
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">
               Shoot Ownership
             </label>
-            <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+            <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 rounded-xl border border-zinc-200">
               <button
                 type="button"
                 onClick={() => setShootType('own')}
-                className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center justify-center space-x-2 py-2.5 rounded-lg text-xs font-bold transition-all ${
                   shootType === 'own'
                     ? 'bg-ios-blue text-white shadow-glow-blue'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
+                    : 'text-zinc-600 hover:text-zinc-900'
                 }`}
               >
-                <User className="w-4 h-4" />
+                <User className="w-3.5 h-3.5" />
                 <span>My Own Shoot (Direct Client)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setShootType('third_party')}
-                className={`flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center justify-center space-x-2 py-2.5 rounded-lg text-xs font-bold transition-all ${
                   shootType === 'third_party'
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-zinc-600 hover:text-zinc-900'
                 }`}
               >
-                <Building className="w-4 h-4" />
+                <Building className="w-3.5 h-3.5" />
                 <span>3rd Party / Agency Shoot</span>
               </button>
             </div>
           </div>
 
-          {/* Third Party Agency Details */}
+          {/* 3rd Party details if enabled */}
           {shootType === 'third_party' && (
-            <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/40 space-y-3">
-              <div className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 text-xs font-bold">
-                <Building className="w-4 h-4" />
-                <span>Agency / Subcontract Info</span>
+            <div className="p-4 rounded-2xl bg-purple-50/80 border border-purple-200 space-y-3 animate-fade-in">
+              <div className="flex items-center space-x-2 text-purple-900 text-xs font-bold">
+                <Building className="w-4 h-4 text-purple-600" />
+                <span>3rd Party Studio / Agency Details</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-[11px] text-zinc-500 font-bold block mb-1">Studio / Agency Name *</label>
+                  <label className="text-[11px] font-semibold text-purple-900 block mb-1">Agency Name *</label>
                   <input
                     type="text"
-                    required={shootType === 'third_party'}
-                    placeholder="e.g. Vogue Studio"
+                    required
+                    placeholder="e.g. Flash Films Studio"
                     value={agencyName}
                     onChange={(e) => setAgencyName(e.target.value)}
-                    className="w-full bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-900/40 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white"
+                    className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-purple-600"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-zinc-500 font-bold block mb-1">Referred By (Lead)</label>
+                  <label className="text-[11px] font-semibold text-purple-900 block mb-1">Referred By / Contact</label>
                   <input
                     type="text"
-                    placeholder="e.g. Kabir"
+                    placeholder="e.g. Rahul Sharma"
                     value={referredBy}
                     onChange={(e) => setReferredBy(e.target.value)}
-                    className="w-full bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-900/40 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white"
+                    className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-purple-600"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-zinc-500 font-bold block mb-1">Agency Phone</label>
+                  <label className="text-[11px] font-semibold text-purple-900 block mb-1">Agency Phone</label>
                   <input
                     type="text"
-                    placeholder="+91..."
+                    placeholder="+91 98765 43210"
                     value={thirdPartyContact}
                     onChange={(e) => setThirdPartyContact(e.target.value)}
-                    className="w-full bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-900/40 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white"
+                    className="w-full bg-white border border-purple-200 rounded-xl px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-purple-600"
                   />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Basic Shoot Details */}
+          {/* Section 1: General Details */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-              Shoot Information
+              1. Shoot Information
             </h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Shoot Title *</label>
+              <div>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Shoot Title *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Ananya & Rohan Grand Wedding"
+                  placeholder="e.g. Sneha & Rahul Wedding"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-ios-blue shadow-xs"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Shoot Category</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Photography Category *</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ShootCategory)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-ios-blue shadow-xs font-semibold"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 focus:outline-none focus:border-ios-blue focus:bg-white font-medium"
                 >
-                  {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Primary Shoot Date *</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Primary Shoot Date *</label>
                 <input
                   type="date"
                   required
                   value={primaryDate}
                   onChange={(e) => setPrimaryDate(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-ios-blue shadow-xs font-semibold"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 focus:outline-none focus:border-ios-blue focus:bg-white font-mono"
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Primary Location / Venue</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Taj Falaknuma Palace, Hyderabad"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-ios-blue shadow-xs"
-                />
+              <div>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Shoot Location / Venue</label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="e.g. Taj Falaknuma, Hyderabad"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl pl-9 pr-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Client Details */}
-          <div className="space-y-3">
+          {/* Section 2: Client Contact */}
+          <div className="space-y-4">
             <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-              Client & Contact Details
+              2. Client Contact
             </h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Client Name *</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Client Full Name *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Rohan Sharma"
+                  placeholder="e.g. Sneha Reddy"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-ios-blue shadow-xs"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Client Phone (WhatsApp) *</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="e.g. +91 98765 43210"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-ios-blue shadow-xs font-mono font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Email (Optional)</label>
-                <input
-                  type="email"
-                  placeholder="client@example.com"
-                  value={clientEmail}
-                  onChange={(e) => setClientEmail(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 shadow-xs"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Instagram Handle</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Client WhatsApp Phone</label>
                 <input
                   type="text"
-                  placeholder="@handle"
+                  placeholder="+91 98765 43210"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Client Email (Optional)</label>
+                <input
+                  type="email"
+                  placeholder="client@gmail.com"
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Instagram Handle</label>
+                <input
+                  type="text"
+                  placeholder="@snehareddy"
                   value={clientInstagram}
                   onChange={(e) => setClientInstagram(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 shadow-xs"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white"
                 />
               </div>
             </div>
           </div>
 
-          {/* Multi-Event Time Slots (Time-to-Time Basis Income) */}
+          {/* Section 3: Multi-Event Time Slots (Time-to-Time Basis) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                  Event Schedule & Time Slots
+                  3. Event Schedule Slots (Time-to-Time)
                 </h3>
-                <p className="text-[11px] text-zinc-500 font-medium">Track multi-event timings & time-to-time allocated income</p>
+                <p className="text-[11px] text-zinc-400">Log morning/evening sessions and allocated session earnings in Rupees (₹)</p>
               </div>
               <button
                 type="button"
                 onClick={handleAddEvent}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-xs text-zinc-800 dark:text-zinc-200 font-bold shadow-xs"
+                className="flex items-center space-x-1 text-xs text-ios-blue hover:underline font-bold"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Slot</span>
+                <span>Add Session</span>
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {events.map((evt, idx) => (
-                <div key={evt.id} className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 space-y-2.5">
+                <div key={evt.id} className="p-3.5 rounded-2xl bg-[#F8F9FB] border border-zinc-200 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-ios-blue">Slot #{idx + 1}</span>
+                    <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-ios-blue" />
+                      <span>Session #{idx + 1}</span>
+                    </span>
                     {events.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveEvent(evt.id)}
-                        className="text-zinc-400 hover:text-red-600 p-1"
+                        className="text-zinc-400 hover:text-rose-600 text-xs p-1"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
+                      <label className="text-[10px] text-zinc-500 block mb-0.5">Session Name</label>
                       <input
                         type="text"
-                        placeholder="Session Name (e.g. Haldi / Muhurtham)"
                         value={evt.name}
                         onChange={(e) => handleUpdateEvent(evt.id, 'name', e.target.value)}
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white font-semibold"
+                        className="w-full bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 font-medium"
                       />
                     </div>
+
                     <div>
+                      <label className="text-[10px] text-zinc-500 block mb-0.5">Date</label>
+                      <input
+                        type="date"
+                        value={evt.date}
+                        onChange={(e) => handleUpdateEvent(evt.id, 'date', e.target.value)}
+                        className="w-full bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-0.5">Venue</label>
                       <input
                         type="text"
-                        placeholder="Venue / Spot"
                         value={evt.venue}
                         onChange={(e) => handleUpdateEvent(evt.id, 'venue', e.target.value)}
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white"
+                        className="w-full bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="text-[10px] text-zinc-400 font-bold block mb-0.5">Date</label>
-                      <input
-                        type="date"
-                        value={evt.date}
-                        onChange={(e) => handleUpdateEvent(evt.id, 'date', e.target.value)}
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-zinc-400 font-bold block mb-0.5">Start Time</label>
+                      <label className="text-[10px] text-zinc-500 block mb-0.5">Start Time</label>
                       <input
                         type="time"
                         value={evt.startTime}
                         onChange={(e) => handleUpdateEvent(evt.id, 'startTime', e.target.value)}
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-900 dark:text-white font-mono"
+                        className="w-full bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 font-mono"
                       />
                     </div>
+
                     <div>
-                      <label className="text-[10px] text-zinc-400 font-bold block mb-0.5">End Time</label>
+                      <label className="text-[10px] text-zinc-500 block mb-0.5">End Time</label>
                       <input
                         type="time"
                         value={evt.endTime}
                         onChange={(e) => handleUpdateEvent(evt.id, 'endTime', e.target.value)}
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-900 dark:text-white font-mono"
+                        className="w-full bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 font-mono"
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="text-[10px] text-zinc-500 font-bold block mb-0.5">Slot Allocated Income (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 25000"
-                      value={evt.allocatedIncome || ''}
-                      onChange={(e) => handleUpdateEvent(evt.id, 'allocatedIncome', Number(e.target.value))}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold"
-                    />
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-0.5">Session Income (₹)</label>
+                      <input
+                        type="number"
+                        placeholder="₹ Amount"
+                        value={evt.allocatedIncome || ''}
+                        onChange={(e) => handleUpdateEvent(evt.id, 'allocatedIncome', Number(e.target.value))}
+                        className="w-full bg-white border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 font-mono font-bold"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-
-            {events.length > 1 && (
-              <button
-                type="button"
-                onClick={autoSumEvents}
-                className="text-xs text-ios-blue hover:underline font-bold"
-              >
-                ↻ Auto-calculate total package from slots sum
-              </button>
-            )}
           </div>
 
-          {/* Financials & Payment Method (Cash, UPI, Bank Transfer, Card, etc.) */}
-          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-              Financials & Payment Modes
-            </h3>
+          {/* Section 4: Financials & Payment Types (Rupees ₹) */}
+          <div className="space-y-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-200">
+            <div className="flex items-center space-x-2">
+              <IndianRupee className="w-4 h-4 text-emerald-600" />
+              <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                4. Financial Package & Payment Method (₹ Rupees)
+              </h3>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Total Agreed Price (₹) *</label>
-                <input
-                  type="number"
-                  required
-                  min={0}
-                  placeholder="0"
-                  value={totalAmount || ''}
-                  onChange={(e) => setTotalAmount(Number(e.target.value))}
-                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-zinc-900 dark:text-white font-mono font-bold focus:outline-none focus:border-ios-blue"
-                />
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Total Agreed Price (₹) *</label>
+                <div className="relative">
+                  <span className="text-zinc-500 font-bold absolute left-3.5 top-1/2 -translate-y-1/2 text-sm">₹</span>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    placeholder="50000"
+                    value={totalAmount || ''}
+                    onChange={(e) => setTotalAmount(Number(e.target.value))}
+                    className="w-full bg-white border border-zinc-200 rounded-xl pl-8 pr-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 font-mono font-bold focus:outline-none focus:border-emerald-600"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Advance Received (₹)</label>
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  value={advanceAmount || ''}
-                  onChange={(e) => setAdvanceAmount(Number(e.target.value))}
-                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm text-emerald-600 dark:text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Payment Method</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white font-bold"
-                >
-                  {PAYMENT_METHODS.map(m => (
-                    <option key={m} value={m}>{m === 'Cash' ? '💵 Cash' : m === 'UPI' ? '📱 UPI (GPay/PhonePe)' : m === 'Bank Transfer' ? '🏦 Bank Transfer' : m}</option>
-                  ))}
-                </select>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Advance Deposit Received (₹)</label>
+                <div className="relative">
+                  <span className="text-zinc-500 font-bold absolute left-3.5 top-1/2 -translate-y-1/2 text-sm">₹</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={totalAmount || undefined}
+                    placeholder="20000"
+                    value={advanceAmount || ''}
+                    onChange={(e) => setAdvanceAmount(Number(e.target.value))}
+                    className="w-full bg-white border border-zinc-200 rounded-xl pl-8 pr-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 font-mono font-bold focus:outline-none focus:border-emerald-600"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs">
-              <span className="text-zinc-500 font-medium">Pending Balance Due:</span>
-              <span className="font-mono font-extrabold text-sm text-rose-600 dark:text-rose-400">
+            {/* Payment Method Selector */}
+            <div>
+              <label className="text-xs font-semibold text-zinc-700 block mb-1.5">Primary Payment Mode</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {PAYMENT_METHODS.map((pm) => {
+                  const Icon = pm.icon;
+                  const isSelected = paymentMethod === pm.id;
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(pm.id)}
+                      className={`flex items-center space-x-2 p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{pm.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live Balance preview */}
+            <div className="p-3 rounded-xl bg-white border border-zinc-200 flex items-center justify-between">
+              <span className="text-xs text-zinc-600 font-semibold">Remaining Balance Due:</span>
+              <span className={`text-sm font-mono font-extrabold ${balanceAmount === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {formatCurrency(balanceAmount)}
               </span>
             </div>
           </div>
 
-          {/* wfolio Delivery Integration */}
-          <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/40 space-y-3">
-            <div className="flex items-center space-x-2 text-indigo-800 dark:text-indigo-300 text-xs font-bold">
-              <Globe className="w-4 h-4" />
-              <span>wfolio Client Delivery Gallery</span>
+          {/* Section 5: wfolio Gallery Link */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Globe className="w-4 h-4 text-indigo-600" />
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                5. wfolio Client Delivery Gallery
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="sm:col-span-2">
-                <label className="text-[11px] text-zinc-500 font-bold block mb-1">wfolio Gallery Link</label>
+              <div>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">wfolio Gallery URL</label>
                 <input
                   type="url"
-                  placeholder="https://akhil360.wfolio.pro/gallery/client-album"
+                  placeholder="https://akhil360.wfolio.pro/gallery/..."
                   value={wfolioUrl}
                   onChange={(e) => setWfolioUrl(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-900/40 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-indigo-600 focus:bg-white font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] text-zinc-500 font-bold block mb-1">Gallery PIN / Password (Optional)</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">wfolio Gallery PIN / Password</label>
                 <input
                   type="text"
-                  placeholder="e.g. 2026"
+                  placeholder="e.g. 4829 or secret password"
                   value={wfolioPassword}
                   onChange={(e) => setWfolioPassword(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-900/40 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white font-mono"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-indigo-600 focus:bg-white font-mono"
                 />
               </div>
             </div>
           </div>
 
-          {/* Workflow Status & 30-Day Storage Policy */}
-          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
-            <div className="flex items-center space-x-2 text-zinc-700 dark:text-zinc-300 text-xs font-bold">
-              <Shield className="w-4 h-4 text-ios-orange" />
-              <span>Workflow & 30-Day Storage Hold</span>
-            </div>
+          {/* Section 6: Workflow Status & Storage */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+              6. Workflow Status & Storage
+            </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Workflow Status</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Current Shoot Status</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as ShootStatus)}
-                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white font-semibold"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 focus:outline-none focus:border-ios-blue focus:bg-white font-semibold"
                 >
                   <option value="booked">Booked (Upcoming)</option>
-                  <option value="in_progress">In Progress (Shot)</option>
+                  <option value="in_progress">In Progress (Shooting)</option>
                   <option value="editing">Editing / Post-Processing</option>
                   <option value="delivered">Delivered (Starts 30-Day Hold)</option>
-                  <option value="data_cleared">Data Cleared / Storage Purged</option>
+                  <option value="data_cleared">Data Cleared (Archive Purged)</option>
                 </select>
               </div>
 
-              {status === 'delivered' && (
-                <div>
-                  <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Delivered Date</label>
-                  <input
-                    type="date"
-                    value={deliveredAt || todayStr}
-                    onChange={(e) => setDeliveredAt(e.target.value)}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white"
-                  />
-                </div>
-              )}
-
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Storage Drive / Location</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Local SSD Device Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. SanDisk 4TB SSD (A1)"
+                  placeholder="e.g. SanDisk SSD 2TB - Black"
                   value={storageDevice}
                   onChange={(e) => setStorageDevice(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Estimated RAW Size (GB)</label>
-                <input
-                  type="number"
-                  placeholder="120"
-                  value={rawFilesSizeGb || ''}
-                  onChange={(e) => setRawFilesSizeGb(Number(e.target.value))}
-                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white font-mono"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 focus:outline-none focus:border-ios-blue focus:bg-white"
                 />
               </div>
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Additional Notes */}
           <div>
-            <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block mb-1">Gear Notes & Instructions</label>
+            <label className="text-xs font-semibold text-zinc-700 block mb-1">Private Shoot Notes</label>
             <textarea
               rows={2}
-              placeholder="e.g. Specific lenses, drone permissions, lighting setup..."
+              placeholder="e.g. Client requested drone shots, 85mm prime lens for portraits..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-ios-blue resize-none shadow-xs"
+              className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white"
             />
           </div>
-        </form>
 
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80 flex items-center justify-end space-x-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition-colors"
-          >
-            Cancel
-          </button>
-          
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="px-6 py-2.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white text-xs font-bold shadow-glow-blue transition-all active:scale-95"
-          >
-            {shootToEdit ? 'Save Changes' : 'Register Shoot'}
-          </button>
-        </div>
+          {/* Sticky Form Footer */}
+          <div className="pt-2 flex items-center justify-end space-x-3 border-t border-zinc-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white text-xs font-bold shadow-glow-blue transition-all active:scale-95"
+            >
+              {shootToEdit ? 'Save Changes' : 'Register Shoot'}
+            </button>
+          </div>
+
+        </form>
       </div>
     </div>
   );
