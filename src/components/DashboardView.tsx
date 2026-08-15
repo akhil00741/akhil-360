@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate, calculateRetentionStatus, getWhatsAppLink } from '../utils/helpers';
 import { format, isSameDay, parseISO } from 'date-fns';
+import { LiveActivityCountdown } from './LiveActivityCountdown';
 
 export const DashboardView: React.FC = () => {
   const { 
@@ -227,6 +228,14 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 🔴 LIVE ACTIVITY: Dynamic Island / Lock Screen Countdown */}
+      {upcomingShoots.length > 0 && (
+        <LiveActivityCountdown
+          upcomingShoot={upcomingShoots[0]}
+          onOpenShoot={(s) => setSelectedShoot(s)}
+        />
+      )}
 
       {/* 30-Day Storage Purge Alert Banner if any */}
       {urgentPurgeShoots.length > 0 && (
