@@ -59,11 +59,18 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
         lines.push('TRIGGER:-PT2H');
         lines.push('END:VALARM');
 
-        // 1-Hour Final Countdown Alarm
+        // 15-Minute Imminent Alert
         lines.push('BEGIN:VALARM');
         lines.push('ACTION:DISPLAY');
-        lines.push(`DESCRIPTION:⏰ AKHIL 360 (1-Hour Alert): 1 hour remaining until ${shoot.title} shoot starts.`);
-        lines.push('TRIGGER:-PT1H');
+        lines.push(`DESCRIPTION:🚨 AKHIL 360: Shoot starts in 15 minutes at ${evt.venue || shoot.location}!`);
+        lines.push('TRIGGER:-PT15M');
+        lines.push('END:VALARM');
+
+        // At Time of Event Alert
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push(`DESCRIPTION:📸 AKHIL 360: ${shoot.title} session is STARTING NOW!`);
+        lines.push('TRIGGER:PT0M');
         lines.push('END:VALARM');
 
         lines.push('END:VEVENT');
@@ -90,11 +97,18 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
       lines.push('TRIGGER:-PT4H');
       lines.push('END:VALARM');
 
-      // 2-Hour Alarm
+      // 15-Minute Alarm
       lines.push('BEGIN:VALARM');
       lines.push('ACTION:DISPLAY');
-      lines.push(`DESCRIPTION:🚗 AKHIL 360 (2-Hour Alert): Start now to beat the traffic for ${shoot.title}!`);
-      lines.push('TRIGGER:-PT2H');
+      lines.push(`DESCRIPTION:🚨 AKHIL 360: Starts in 15 minutes at ${shoot.location}!`);
+      lines.push('TRIGGER:-PT15M');
+      lines.push('END:VALARM');
+
+      // At Event Time Alarm
+      lines.push('BEGIN:VALARM');
+      lines.push('ACTION:DISPLAY');
+      lines.push(`DESCRIPTION:📸 AKHIL 360: ${shoot.title} session is starting now!`);
+      lines.push('TRIGGER:PT0M');
       lines.push('END:VALARM');
 
       lines.push('END:VEVENT');
