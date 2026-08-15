@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shoot } from '../types/shoot';
-import { Clock, Navigation, MapPin, Sparkles, MessageSquare, AlertCircle, CheckCircle2, Bell } from 'lucide-react';
+import { Clock, Navigation, MapPin, Sparkles, MessageSquare, AlertCircle, CheckCircle2, Bell, Camera, Car } from 'lucide-react';
 import { getWhatsAppLink } from '../utils/helpers';
 import { downloadAppleCalendar } from '../utils/calendarSync';
 
@@ -52,7 +52,6 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
     const body = `Starts at ${shootTime} (${timeLeft.hours > 0 ? `${timeLeft.hours}h ` : ''}${timeLeft.minutes}m remaining) at ${venue}. Check live traffic & beat the rush!`;
 
     const sendNativeNotif = () => {
-      // 1. Try Service Worker for Native iOS Lock Screen Notification
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.ready.then((reg) => {
           reg.showNotification(title, {
@@ -65,16 +64,13 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         });
       }
 
-      // 2. Standard Web Notification fallback
       try {
         new Notification(title, {
           body: body,
           icon: './apple-touch-icon.png',
           badge: './favicon.png',
         });
-      } catch (err) {
-        console.log('Standard notif error, handled by SW:', err);
-      }
+      } catch (err) {}
 
       setNotifSent(true);
       setTimeout(() => setNotifSent(false), 3500);
@@ -88,12 +84,12 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
           if (permission === 'granted') {
             sendNativeNotif();
           } else {
-            alert('Please enable notifications in iPhone Settings ➔ Safari / AKHIL 360 to see lock screen banners.');
+            alert('Please enable notifications in Safari Settings to receive lock screen alerts.');
           }
         });
       }
     } else {
-      alert('Your browser does not support web notifications directly. Please use "Sync Apple Cal" for lock screen alarms.');
+      alert('Use "Sync Apple Cal" button below to load alarms natively on your Lock Screen.');
     }
   };
 
@@ -101,141 +97,133 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
 
   const eventSlot = upcomingShoot.events?.[0];
   const venue = eventSlot?.venue || upcomingShoot.location || 'Studio';
+  const shootTime = eventSlot?.startTime || '09:00';
 
-  // Dynamic traffic advisory text
-  const getTrafficAdvisory = () => {
-    if (timeLeft.isPast) {
-      return <span className="text-emerald-400 font-bold">Session is currently in progress on location.</span>;
-    }
-    if (timeLeft.hours >= 4) {
-      return <span>Traffic status: <strong>Clear</strong> (Start 4h gear check)</span>;
-    }
-    if (timeLeft.hours >= 2) {
-      return <span>Departure Advisory: <strong className="text-amber-400">Start Driving (2h to shoot)</strong></span>;
-    }
-    if (timeLeft.hours === 1) {
-      return <span>Rush Alert: <strong className="text-amber-300">1 Hour Remaining (Head to {venue})</strong></span>;
-    }
-    return <span>Arrival & Setup: <strong className="text-rose-400">{timeLeft.minutes}m Left (Setup lighting now)</strong></span>;
-  };
+  // Calculate progress percentage (assume 6 hours window before shoot)
+  const totalWindowMinutes = 360;
+  const progressPercent = Math.min(100, Math.max(10, 100 - (timeLeft.totalMinutes / totalWindowMinutes) * 100));
 
   return (
-    <div 
-      onClick={() => onOpenShoot(upcomingShoot)}
-      className="p-4 sm:p-5 rounded-3xl bg-zinc-900 text-white shadow-xl space-y-3 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500/50 transition-all group animate-fade-in"
-    >
-      {/* Top Dynamic Island Style Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-          <span className="text-[11px] font-mono font-bold tracking-wider text-zinc-300 uppercase flex items-center gap-1">
-            <span>LIVE ACTIVITY</span>
-            <span className="text-zinc-500">•</span>
-            <span>LOCK SCREEN TRACKER</span>
-          </span>
-        </div>
-
-        <div className="flex items-center space-x-1.5 bg-zinc-800/80 px-2.5 py-1 rounded-full border border-zinc-700">
-          <Clock className="w-3 h-3 text-emerald-400" />
-          <span className="text-[11px] font-mono font-bold text-emerald-400">
-            {timeLeft.isPast ? 'IN PROGRESS' : `${timeLeft.totalMinutes} MIN TO GO`}
-          </span>
-        </div>
-      </div>
-
-      {/* Main Content: Title and Big Live Countdown */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-ios-blue bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
-            {upcomingShoot.category}
-          </span>
-          <h3 className="text-lg sm:text-xl font-black text-white mt-1 group-hover:text-ios-blue transition-colors">
-            {upcomingShoot.title}
-          </h3>
-          <p className="text-xs text-zinc-400 flex items-center gap-1 mt-0.5 font-medium">
-            <MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-            <span className="truncate">{venue}</span>
-          </p>
-        </div>
-
-        {/* Live Digits Box */}
-        <div className="flex items-center space-x-1.5 self-start sm:self-auto bg-zinc-950/80 p-2.5 rounded-2xl border border-zinc-800 shadow-inner">
-          <div className="text-center px-1.5">
-            <span className="text-xl sm:text-2xl font-mono font-black text-white block">
-              {String(timeLeft.hours).padStart(2, '0')}
-            </span>
-            <span className="text-[9px] uppercase font-bold text-zinc-500 block">HRS</span>
+    <div className="space-y-3">
+      {/* 📱 PIXEL-PERFECT APPLE LOCK SCREEN LIVE ACTIVITY CARD (MATCHING USER SCREENSHOT) */}
+      <div 
+        onClick={() => onOpenShoot(upcomingShoot)}
+        className="p-5 sm:p-6 rounded-[28px] bg-black/95 text-white shadow-2xl border border-white/10 space-y-4 relative overflow-hidden cursor-pointer hover:border-blue-500/40 transition-all group animate-fade-in backdrop-blur-xl"
+      >
+        {/* Top Header of Apple Live Activity */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-black shadow-glow-green">
+              <Camera className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+                AKHIL 360 • LIVE ACTIVITY
+              </span>
+              <span className="text-sm font-extrabold text-white">
+                {upcomingShoot.title}
+              </span>
+            </div>
           </div>
 
-          <span className="text-lg font-mono font-bold text-zinc-600 animate-pulse">:</span>
-
-          <div className="text-center px-1.5">
-            <span className="text-xl sm:text-2xl font-mono font-black text-emerald-400 block">
-              {String(timeLeft.minutes).padStart(2, '0')}
+          <div className="flex items-center space-x-2 bg-white/10 px-3 py-1 rounded-full border border-white/15">
+            <span className="text-xs font-mono font-bold text-emerald-400">
+              {venue}
             </span>
-            <span className="text-[9px] uppercase font-bold text-zinc-500 block">MIN</span>
-          </div>
-
-          <span className="text-lg font-mono font-bold text-zinc-600 animate-pulse">:</span>
-
-          <div className="text-center px-1.5">
-            <span className="text-xl sm:text-2xl font-mono font-black text-white block">
-              {String(timeLeft.seconds).padStart(2, '0')}
-            </span>
-            <span className="text-[9px] uppercase font-bold text-zinc-500 block">SEC</span>
+            <Car className="w-3.5 h-3.5 text-emerald-400" />
           </div>
         </div>
-      </div>
 
-      {/* Live Route & Action Capsule */}
-      <div className="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center space-x-1.5 text-zinc-300 font-medium">
-          <Navigation className="w-3.5 h-3.5 text-emerald-400" />
-          {getTrafficAdvisory()}
+        {/* Center Main Countdown Display */}
+        <div className="flex items-end justify-between pt-1">
+          <div className="space-y-1.5">
+            <div className="flex items-baseline space-x-2">
+              <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white">
+                {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}
+              </span>
+              <span className="text-sm font-mono font-bold text-zinc-400">
+                :{String(timeLeft.seconds).padStart(2, '0')}
+              </span>
+            </div>
+
+            {/* Apple Green Progress Line */}
+            <div className="w-48 sm:w-60 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-emerald-400 rounded-full transition-all duration-1000"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+
+            <span className="text-xs font-bold text-zinc-400 block pt-0.5">
+              {timeLeft.isPast ? 'Session in progress' : 'Time Remaining'}
+            </span>
+          </div>
+
+          <div className="text-right space-y-0.5">
+            <span className="text-xs text-zinc-400 font-medium block">Starts</span>
+            <span className="text-lg sm:text-xl font-extrabold font-mono text-white block">
+              {shootTime}
+            </span>
+            <span className="text-[11px] text-zinc-500 font-medium block truncate max-w-[130px]">
+              {upcomingShoot.category}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={handleTriggerImmediateNotification}
-            className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 border border-amber-500/40 text-xs"
-            title="Trigger Immediate Minutes Countdown Notification to Lock Screen"
-          >
-            <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
-            <span>{notifSent ? '✅ Alert Fired!' : '🔔 Notify Minutes Now'}</span>
-          </button>
+        {/* Live Route & Quick Actions */}
+        <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center space-x-1.5 text-zinc-300 font-medium">
+            <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Traffic: <strong>Clear</strong> (Beat rush hour)</span>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => downloadAppleCalendar([upcomingShoot], `${upcomingShoot.title.replace(/\s+/g, '_')}.ics`)}
-            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-zinc-700 text-xs"
-            title="Sync this shoot to Apple Calendar with 4h, 2h, and 1h alerts"
-          >
-            <Clock className="w-3 h-3 text-ios-blue" />
-            <span>🍎 Sync Apple Cal</span>
-          </button>
+          <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={handleTriggerImmediateNotification}
+              className="px-3 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 border border-amber-400/30 text-xs"
+              title="Test Instant Notification"
+            >
+              <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+              <span>{notifSent ? '✅ Alert Fired!' : '🔔 Notify'}</span>
+            </button>
 
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(venue)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 text-xs"
-          >
-            <Navigation className="w-3 h-3" />
-            <span>Google Maps Route</span>
-          </a>
+            <button
+              type="button"
+              onClick={() => downloadAppleCalendar([upcomingShoot], `${upcomingShoot.title.replace(/\s+/g, '_')}.ics`)}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-white/15 text-xs"
+              title="Sync to Apple Calendar"
+            >
+              <Clock className="w-3 h-3 text-ios-blue" />
+              <span>🍎 Sync Apple Cal</span>
+            </button>
 
-          {upcomingShoot.clientPhone && (
             <a
-              href={getWhatsAppLink(upcomingShoot.clientPhone, `Hi ${upcomingShoot.clientName}, I am on track for our shoot today at ${venue}!`)}
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(venue)}`}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 text-xs"
+              className="px-3 py-1.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 text-xs"
             >
-              <MessageSquare className="w-3 h-3" />
-              <span>WhatsApp</span>
+              <Navigation className="w-3 h-3" />
+              <span>Maps</span>
             </a>
-          )}
+          </div>
+        </div>
+      </div>
+
+      {/* 🔔 ATTACHED LOCK SCREEN NOTIFICATION BANNER (MATCHING USER SCREENSHOT) */}
+      <div className="p-4 rounded-2xl bg-blue-50/90 border border-blue-200/80 shadow-xs flex items-center space-x-3 text-zinc-900 animate-fade-in">
+        <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-black shrink-0 shadow-xs">
+          <Camera className="w-5 h-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-zinc-900">Pre-Shoot Reminder</h4>
+            <span className="text-[10px] text-zinc-500 font-medium">Live</span>
+          </div>
+          <p className="text-xs text-zinc-700 font-medium mt-0.5 truncate">
+            {upcomingShoot.title} at {venue} starts in {timeLeft.totalMinutes} minutes. Prepare camera gear & check route!
+          </p>
         </div>
       </div>
     </div>
