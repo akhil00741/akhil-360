@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useShoots } from '../context/ShootContext';
 import { 
   Calendar, AlertTriangle, Plus, Shield, 
   Clock, CheckCircle2, Globe, MessageSquare, 
-  ChevronRight, IndianRupee, Sparkles, Banknote, Landmark, Smartphone, Wallet 
+  ChevronRight, IndianRupee, Sparkles, Banknote, Landmark, Smartphone, Wallet, 
+  MapPin, CheckSquare, Square, Navigation, Phone, SunMedium, Camera 
 } from 'lucide-react';
-import { formatCurrency, formatDate, calculateRetentionStatus } from '../utils/helpers';
+import { formatCurrency, formatDate, calculateRetentionStatus, getWhatsAppLink } from '../utils/helpers';
+import { format, isSameDay, parseISO } from 'date-fns';
 
 export const DashboardView: React.FC = () => {
   const { 
@@ -16,6 +18,29 @@ export const DashboardView: React.FC = () => {
     setActiveTab,
     setReminderModalShoot 
   } = useShoots();
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayFormatted = format(new Date(), 'EEEE, dd MMMM yyyy');
+
+  // Today's Shoots & Sessions
+  const todayShoots = shoots.filter(s => {
+    if (s.primaryDate === todayStr) return true;
+    return s.events?.some(e => e.date === todayStr);
+  });
+
+  // Gear Checklist state (stored in session/local state)
+  const [gearChecklist, setGearChecklist] = useState<Record<string, boolean>>({
+    'batteries': false,
+    'sd_cards': false,
+    'flash_triggers': false,
+    'lenses_cleaned': false,
+  });
+
+  const toggleGear = (key: string) => {
+    setGearChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const allGearReady = Object.values(gearChecklist).every(Boolean);
 
   // Urgent storage clearance shoots (< 7 days or expired)
   const urgentPurgeShoots = shoots
@@ -41,9 +66,9 @@ export const DashboardView: React.FC = () => {
       <div className="p-5 sm:p-6 rounded-2xl bg-white border border-zinc-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
-              Studio Active
+              Studio Active • {todayFormatted}
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 mt-1 tracking-tight">
@@ -61,6 +86,146 @@ export const DashboardView: React.FC = () => {
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>Register Shoot</span>
         </button>
+      </div>
+
+      {/* 🌟 TODAY'S LIVE STUDIO BRIEFING & SCHEDULE */}
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-white border border-blue-100 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-xl bg-ios-blue text-white flex items-center justify-center shadow-xs">
+              <SunMedium className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-zinc-900">Today's Studio Briefing</h3>
+              <p className="text-xs text-zinc-500 font-medium">{todayFormatted}</p>
+            </div>
+          </div>
+
+          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+            todayShoots.length > 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-zinc-100 text-zinc-600 border-zinc-200'
+          }`}>
+            {todayShoots.length > 0 ? `🎯 ${todayShoots.length} Shoot Scheduled Today` : '✨ Schedule Clear Today'}
+          </span>
+        </div>
+
+        {/* If shoots today */}
+        {todayShoots.length > 0 ? (
+          <div className="space-y-3 pt-1">
+            {todayShoots.map(shoot => (
+              <div key={shoot.id} className="p-4 rounded-xl bg-white border border-blue-200/80 shadow-2xs space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-50 text-ios-blue border border-blue-200">
+                      {shoot.category}
+                    </span>
+                    <h4 className="text-base font-extrabold text-zinc-900 mt-1">{shoot.title}</h4>
+                    <p className="text-xs text-zinc-600 font-medium">
+                      Client: <strong>{shoot.clientName}</strong> {shoot.clientPhone ? `(${shoot.clientPhone})` : ''}
+                    </p>
+                  </div>
+
+                  <span className="text-sm font-black font-mono text-emerald-700">
+                    {formatCurrency(shoot.totalAmount)}
+                  </span>
+                </div>
+
+                {/* Event Timing & Location */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-600 pt-1 border-t border-zinc-100">
+                  <span className="flex items-center gap-1 font-semibold text-zinc-800">
+                    <Clock className="w-3.5 h-3.5 text-ios-blue" />
+                    {shoot.events?.[0]?.startTime ? `${shoot.events[0].startTime} - ${shoot.events[0].endTime}` : 'All Day'}
+                  </span>
+                  <span className="flex items-center gap-1 truncate max-w-xs">
+                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                    {shoot.location || 'Studio Location'}
+                  </span>
+                </div>
+
+                {/* 1-Tap Quick Action Buttons */}
+                <div className="flex items-center gap-2 pt-1">
+                  {shoot.location && (
+                    <a
+                      href={`http://maps.apple.com/?daddr=${encodeURIComponent(shoot.location)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-ios-blue border border-blue-200 text-xs font-bold transition-all active:scale-95"
+                    >
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>Live Traffic & GPS</span>
+                    </a>
+                  )}
+
+                  {shoot.clientPhone && (
+                    <a
+                      href={getWhatsAppLink(shoot.clientPhone, `Hi ${shoot.clientName}, I am preparing the gear for our shoot today at ${shoot.location}!`)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-all active:scale-95"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>WhatsApp Client</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-white/80 border border-zinc-200/80 flex items-center justify-between text-xs text-zinc-600 font-medium">
+            <span>No client shoots scheduled for today. Free for post-processing or album designs!</span>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="text-xs text-ios-blue font-bold hover:underline shrink-0 ml-2"
+            >
+              + Book Today
+            </button>
+          </div>
+        )}
+
+        {/* 📷 Photographer Pre-Shoot Gear Checklist */}
+        <div className="pt-2 border-t border-blue-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Camera className="w-3.5 h-3.5 text-ios-blue" />
+              <span>Pre-Shoot Equipment Checklist</span>
+            </span>
+            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+              allGearReady ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-500'
+            }`}>
+              {allGearReady ? '✅ All Gear Ready' : `${Object.values(gearChecklist).filter(Boolean).length}/4 Ready`}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { id: 'batteries', label: '🔋 Camera Batteries 100%' },
+              { id: 'sd_cards', label: '💾 SD/CFexpress Cleared' },
+              { id: 'flash_triggers', label: '💡 Flashes & Triggers' },
+              { id: 'lenses_cleaned', label: '🔍 Prime Lenses Packed' },
+            ].map(item => {
+              const isChecked = gearChecklist[item.id];
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => toggleGear(item.id)}
+                  className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                    isChecked
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-2xs'
+                      : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                >
+                  <span className="truncate mr-1">{item.label}</span>
+                  {isChecked ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Square className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* 30-Day Storage Purge Alert Banner if any */}
