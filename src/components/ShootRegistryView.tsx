@@ -3,21 +3,23 @@ import { useShoots } from '../context/ShootContext';
 import { 
   Search, Plus, Calendar, MapPin, 
   MessageSquare, Phone, ArrowUpDown, CheckCircle2, 
-  User, Building, Banknote 
+  User, Building, Banknote, Trash2, AlertCircle 
 } from 'lucide-react';
 import { formatCurrency, formatDate, calculateRetentionStatus } from '../utils/helpers';
 import { WfolioBadge } from './WfolioBadge';
+import { Shoot } from '../types/shoot';
 
 type FilterTab = 'all' | 'own' | 'third_party' | 'cash' | 'booked' | 'editing' | 'delivered' | 'data_cleared';
 type SortField = 'date' | 'revenue' | 'balance' | 'title';
 
 export const ShootRegistryView: React.FC = () => {
-  const { shoots, setIsCreateModalOpen, setSelectedShoot, setReminderModalShoot } = useShoots();
+  const { shoots, setIsCreateModalOpen, setSelectedShoot, setReminderModalShoot, deleteShoot } = useShoots();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortAsc, setSortAsc] = useState(false);
+  const [shootToDelete, setShootToDelete] = useState<Shoot | null>(null);
 
   // Filter and Sort Logic
   const filteredShoots = useMemo(() => {
@@ -67,6 +69,13 @@ export const ShootRegistryView: React.FC = () => {
     { id: 'delivered', label: 'Delivered (30d Hold)', count: shoots.filter(s => s.status === 'delivered').length },
     { id: 'data_cleared', label: 'Data Cleared', count: shoots.filter(s => s.isDataCleared).length },
   ];
+
+  const handleConfirmDelete = () => {
+    if (shootToDelete) {
+      deleteShoot(shootToDelete.id);
+      setShootToDelete(null);
+    }
+  };
 
   return (
     <div className="space-y-5 pb-24">
@@ -135,7 +144,7 @@ export const ShootRegistryView: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter Tabs (Horizontal Scrollable) */}
+      {/* Filter Tabs */}
       <div className="flex items-center space-x-2 overflow-x-auto pb-1 no-scrollbar">
         {filterTabs.map((tab) => {
           const isActive = filterTab === tab.id;
@@ -301,6 +310,17 @@ export const ShootRegistryView: React.FC = () => {
                         <Phone className="w-3.5 h-3.5" />
                       </a>
                     )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShootToDelete(shoot);
+                      }}
+                      className="p-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-rose-100 text-zinc-400 hover:text-rose-600 transition-colors"
+                      title="Delete Shoot"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
@@ -322,6 +342,44 @@ export const ShootRegistryView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* In-App Apple Style Delete Confirmation Alert Modal */}
+      {shootToDelete && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-sm bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-red-950/80 border border-rose-300 dark:border-red-800 flex items-center justify-center mx-auto text-rose-600 dark:text-red-400">
+              <AlertCircle className="w-6 h-6 animate-bounce" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">
+                Delete "{shootToDelete.title}"?
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
+                This action cannot be undone. All time slots, payments, and 30-day retention logs for this shoot will be permanently erased.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShootToDelete(null)}
+                className="w-full py-2.5 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-glow-red transition-all active:scale-95"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
