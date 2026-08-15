@@ -1,13 +1,13 @@
 import React from 'react';
 import { useShoots } from '../context/ShootContext';
-import { Plus, Camera, Calendar } from 'lucide-react';
+import { Plus, Camera, Calendar, RefreshCw, Cloud } from 'lucide-react';
 
 interface HeaderProps {
   onOpenAppleSync?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
-  const { setIsCreateModalOpen } = useShoots();
+  const { setIsCreateModalOpen, isSyncing, triggerSync } = useShoots();
 
   return (
     <header className="sticky top-0 z-30 ios-glass-header px-4 py-3 sm:px-6">
@@ -28,9 +28,29 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
           </div>
         </div>
 
-        {/* Right Actions - Simple, Minimal & Clean */}
+        {/* Right Actions */}
         <div className="flex items-center space-x-2">
           
+          {/* Real-time Cloud Sync Button */}
+          <button
+            onClick={() => triggerSync()}
+            title="Real-Time Worldwide Studio Sync (US & India)"
+            disabled={isSyncing}
+            className="flex items-center space-x-1.5 px-2.5 py-2 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-700 shadow-2xs transition-all active:scale-95 disabled:opacity-70"
+          >
+            {isSyncing ? (
+              <RefreshCw className="w-3.5 h-3.5 text-ios-blue animate-spin" />
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <Cloud className="w-3.5 h-3.5 text-zinc-500" />
+              </div>
+            )}
+            <span className="hidden sm:inline text-[11px]">
+              {isSyncing ? 'Syncing...' : 'Cloud Live'}
+            </span>
+          </button>
+
           {/* Apple Calendar Quick Sync Icon */}
           <button
             onClick={onOpenAppleSync}

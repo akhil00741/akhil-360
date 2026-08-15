@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Shoot, PaymentRecord, AppTheme, PaymentMethod } from '../types/shoot';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { Shoot, PaymentRecord, AppTheme, PaymentMethod, PaymentStatus } from '../types/shoot';
 import { INITIAL_SHOOTS } from '../data/sampleData';
 import { addDays, format } from 'date-fns';
+import { fetchCloudShoots, saveCloudShoots } from '../utils/cloudSync';
 
 const STORAGE_KEY = 'akhil_360_shoots_prod_v1';
 const THEME_KEY = 'akhil_360_theme';
@@ -17,6 +18,11 @@ interface ShootContextType {
   getShootById: (id: string) => Shoot | undefined;
   importShoots: (newShoots: Partial<Shoot>[]) => void;
   
+  // Cloud Real-Time Sync
+  isSyncing: boolean;
+  lastSyncedAt: Date | null;
+  triggerSync: () => Promise<void>;
+
   // Theme
   theme: AppTheme;
   toggleTheme: () => void;
@@ -34,7 +40,7 @@ interface ShootContextType {
     upcomingCount: number;
     clearedCount: number;
     retentionActiveCount: number;
-    criticalClearanceCount: number; // < 7 days
+    criticalClearanceCount: number;
     ownShootsCount: number;
     ownShootsRevenue: number;
     thirdPartyCount: number;
@@ -70,289 +76,371 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [theme, setTheme] = useState<AppTheme>(() => {
-    const saved = localStorage.getItem(THEME_KEY);
-    return (saved as AppTheme) || 'light';
+    return (localStorage.getItem(THEME_KEY) as AppTheme) || 'light';
   });
+
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const shootsRef = useRef<Shoot[]>(shoots);
+  shootsRef.current = shoots;
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'registry' | 'calendar' | 'storage' | 'analytics'>('dashboard');
   const [selectedShoot, setSelectedShoot] = useState<Shoot | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [reminderModalShoot, setReminderModalShoot] = useState<Shoot | null>(null);
 
-  // Apply theme class to document
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    }
-    localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
+  // Sync to Cloud function
+  const triggerSync = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const cloudData = await fetchCloudShoots();
+      if (cloudData && Array.isArray(cloudData)) {
+        const localMap = new Map(shootsRef.current.map(s => [s.id, s]));
+        let hasChanges = false;
 
-  const toggleTheme = () => {
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+        cloudData.forEach(cloudShoot => {
+          const localShoot = localMap.get(cloudShoot.id);
+          if (!localShoot || (new Date(cloudShoot.updatedAt || 0) > new Date(localShoot.updatedAt || 0))) {
+            localMap.set(cloudShoot.id, cloudShoot);
+            hasChanges = true;
+          }
+        });
+
+        localMap.forEach((shoot, id) => {
+          if (!cloudData.some(c => c.id === id)) {
+            hasChanges = true;
+          }
+        });
+
+        const merged = Array.from(localMap.values());
+        if (hasChanges || shootsRef.current.length !== merged.length) {
+          setShoots(merged);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          await saveCloudShoots(merged);
+        }
+      } else if (shootsRef.current.length > 0) {
+        await saveCloudShoots(shootsRef.current);
+      }
+      setLastSyncedAt(new Date());
+    } catch (e) {
+      console.error('Sync failed:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // Sync on initial load and set background periodic sync
+  useEffect(() => {
+    triggerSync();
+
+    const interval = setInterval(() => {
+      triggerSync();
+    }, 12000); // Check every 12 seconds
+
+    const handleFocus = () => {
+      triggerSync();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [triggerSync]);
+
+  // Persist to local storage and sync to cloud
+  const persistShoots = (newShoots: Shoot[]) => {
+    setShoots(newShoots);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newShoots));
+    saveCloudShoots(newShoots).then(() => {
+      setLastSyncedAt(new Date());
+    });
   };
 
-  // Sync shoots to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(shoots));
-    } catch (e) {
-      console.error('Failed to save shoots to local storage', e);
-    }
-  }, [shoots]);
-
-  // Sync selected shoot
-  useEffect(() => {
-    if (selectedShoot) {
-      const updated = shoots.find(s => s.id === selectedShoot.id);
-      if (updated) {
-        setSelectedShoot(updated);
-      }
-    }
-  }, [shoots]);
+  const toggleTheme = () => {
+    const nextTheme: AppTheme = 'light';
+    setTheme(nextTheme);
+    localStorage.setItem(THEME_KEY, nextTheme);
+  };
 
   const addShoot = (shootData: Omit<Shoot, 'id' | 'createdAt' | 'updatedAt' | 'balanceAmount'>): Shoot => {
-    const now = new Date();
-    const id = `shoot-${Date.now()}`;
+    const now = new Date().toISOString();
     const balanceAmount = Math.max(0, shootData.totalAmount - (shootData.advanceAmount || 0));
     
-    let paymentStatus: Shoot['paymentStatus'] = 'unpaid';
-    if (shootData.advanceAmount >= shootData.totalAmount && shootData.totalAmount > 0) {
+    let paymentStatus: PaymentStatus = 'unpaid';
+    if (balanceAmount === 0 && shootData.totalAmount > 0) {
       paymentStatus = 'paid';
     } else if (shootData.advanceAmount > 0) {
       paymentStatus = 'partial';
     }
 
-    const defaultMethod = shootData.primaryPaymentMethod || 'Cash';
-
     const newShoot: Shoot = {
       ...shootData,
-      id,
+      id: `shoot-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       balanceAmount,
       paymentStatus,
-      primaryPaymentMethod: defaultMethod,
-      payments: shootData.payments || (shootData.advanceAmount > 0 ? [{
-        id: `p-${Date.now()}`,
-        amount: shootData.advanceAmount,
-        date: shootData.bookedAt || format(now, 'yyyy-MM-dd'),
-        method: defaultMethod,
-        notes: 'Initial advance',
-      }] : []),
+      bookedAt: shootData.bookedAt || now,
       retentionDaysLimit: shootData.retentionDaysLimit || 30,
-      isDataCleared: false,
-      wfolioStatus: shootData.wfolioUrl ? (shootData.status === 'delivered' ? 'delivered' : 'published') : 'none',
-      createdAt: format(now, 'yyyy-MM-dd HH:mm:ss'),
-      updatedAt: format(now, 'yyyy-MM-dd HH:mm:ss'),
+      createdAt: now,
+      updatedAt: now,
+      events: shootData.events || [
+        {
+          id: `evt-${Date.now()}-1`,
+          name: 'Main Shoot',
+          date: shootData.primaryDate,
+          startTime: '09:00',
+          endTime: '17:00',
+          venue: shootData.location || 'Studio',
+          allocatedIncome: shootData.totalAmount,
+        }
+      ],
+      payments: shootData.advanceAmount > 0 ? [
+        {
+          id: `pay-${Date.now()}`,
+          amount: shootData.advanceAmount,
+          date: shootData.primaryDate,
+          method: 'Cash',
+          notes: 'Initial Advance Deposit',
+        }
+      ] : [],
     };
 
-    if (newShoot.status === 'delivered' && !newShoot.deliveredAt) {
-      newShoot.deliveredAt = format(now, 'yyyy-MM-dd');
-      newShoot.dataRetentionDeadline = format(addDays(now, newShoot.retentionDaysLimit), 'yyyy-MM-dd');
-    }
-
-    setShoots(prev => [newShoot, ...prev]);
+    const updatedShoots = [newShoot, ...shoots];
+    persistShoots(updatedShoots);
     return newShoot;
   };
 
   const updateShoot = (id: string, updates: Partial<Shoot>) => {
-    setShoots(prev => prev.map(shoot => {
-      if (shoot.id !== id) return shoot;
-
-      const merged = { ...shoot, ...updates, updatedAt: format(new Date(), 'yyyy-MM-dd HH:mm:ss') };
-      
-      if ('totalAmount' in updates || 'advanceAmount' in updates || 'payments' in updates) {
-        const totalPaid = merged.payments?.reduce((sum, p) => sum + p.amount, 0) || merged.advanceAmount || 0;
-        merged.advanceAmount = totalPaid;
-        merged.balanceAmount = Math.max(0, merged.totalAmount - totalPaid);
-        if (merged.balanceAmount === 0 && merged.totalAmount > 0) {
-          merged.paymentStatus = 'paid';
-        } else if (totalPaid > 0) {
-          merged.paymentStatus = 'partial';
+    const updatedShoots = shoots.map((s) => {
+      if (s.id === id) {
+        const totalAmount = updates.totalAmount !== undefined ? updates.totalAmount : s.totalAmount;
+        const advanceAmount = updates.advanceAmount !== undefined ? updates.advanceAmount : s.advanceAmount;
+        const balanceAmount = Math.max(0, totalAmount - advanceAmount);
+        
+        let paymentStatus = s.paymentStatus;
+        if (balanceAmount === 0 && totalAmount > 0) {
+          paymentStatus = 'paid';
+        } else if (advanceAmount > 0) {
+          paymentStatus = 'partial';
         } else {
-          merged.paymentStatus = 'unpaid';
+          paymentStatus = 'unpaid';
         }
-      }
 
-      if (updates.status === 'delivered' && !shoot.deliveredAt && !updates.deliveredAt) {
-        const delDate = format(new Date(), 'yyyy-MM-dd');
-        merged.deliveredAt = delDate;
-        merged.dataRetentionDeadline = format(addDays(new Date(), merged.retentionDaysLimit || 30), 'yyyy-MM-dd');
+        return {
+          ...s,
+          ...updates,
+          balanceAmount,
+          paymentStatus: updates.paymentStatus || paymentStatus,
+          updatedAt: new Date().toISOString(),
+        };
       }
+      return s;
+    });
 
-      return merged;
-    }));
+    persistShoots(updatedShoots);
+
+    if (selectedShoot && selectedShoot.id === id) {
+      setSelectedShoot(updatedShoots.find((s) => s.id === id) || null);
+    }
   };
 
   const deleteShoot = (id: string) => {
-    setShoots(prev => prev.filter(s => s.id !== id));
+    const updatedShoots = shoots.filter((s) => s.id !== id);
+    persistShoots(updatedShoots);
     if (selectedShoot?.id === id) {
       setSelectedShoot(null);
     }
   };
 
   const markAsDelivered = (id: string, deliveredAtDate?: string, wfolioUrl?: string) => {
-    const delDate = deliveredAtDate || format(new Date(), 'yyyy-MM-dd');
-    const deadline = format(addDays(new Date(delDate), 30), 'yyyy-MM-dd');
-    
+    const now = deliveredAtDate || format(new Date(), 'yyyy-MM-dd');
+    const dataRetentionDeadline = format(addDays(new Date(now), 30), 'yyyy-MM-dd');
+
     updateShoot(id, {
       status: 'delivered',
-      deliveredAt: delDate,
-      dataRetentionDeadline: deadline,
-      ...(wfolioUrl ? { wfolioUrl, wfolioStatus: 'delivered' } : {}),
+      deliveredAt: now,
+      dataRetentionDeadline,
+      isDataCleared: false,
+      wfolioStatus: 'delivered',
+      ...(wfolioUrl ? { wfolioUrl } : {}),
     });
   };
 
   const markDataCleared = (id: string, notes?: string) => {
-    const clearedDate = format(new Date(), 'yyyy-MM-dd');
+    const shoot = shoots.find(s => s.id === id);
+    const existingNotes = shoot?.notes ? `${shoot.notes}\n` : '';
+    const clearNote = `[DATA CLEARED on ${format(new Date(), 'dd MMM yyyy')}] Raw files purged from storage drive.`;
+    
     updateShoot(id, {
       status: 'data_cleared',
       isDataCleared: true,
-      dataClearedAt: clearedDate,
-      storageDevice: notes ? `${notes} (Cleared)` : 'Cleared from local storage',
+      notes: `${existingNotes}${clearNote}`,
     });
   };
 
   const addPayment = (shootId: string, payment: Omit<PaymentRecord, 'id'>) => {
-    const shoot = shoots.find(s => s.id === shootId);
-    if (!shoot) return;
+    const target = shoots.find((s) => s.id === shootId);
+    if (!target) return;
 
-    const newRecord: PaymentRecord = {
+    const newPaymentRecord: PaymentRecord = {
       ...payment,
-      id: `pay-${Date.now()}`,
+      id: `pay-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     };
 
-    const newPayments = [...(shoot.payments || []), newRecord];
-    const totalPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
-    const balance = Math.max(0, shoot.totalAmount - totalPaid);
+    const newAdvance = (target.advanceAmount || 0) + payment.amount;
+    const newPayments = [...(target.payments || []), newPaymentRecord];
 
     updateShoot(shootId, {
+      advanceAmount: newAdvance,
       payments: newPayments,
-      advanceAmount: totalPaid,
-      balanceAmount: balance,
-      paymentStatus: balance === 0 ? 'paid' : 'partial',
     });
-  };
-
-  const importShoots = (newShoots: Partial<Shoot>[]) => {
-    const prepared: Shoot[] = newShoots.map((s, idx) => {
-      const now = new Date();
-      const totalAmount = s.totalAmount || 30000;
-      const advanceAmount = s.advanceAmount || 0;
-      return {
-        id: `shoot-import-${Date.now()}-${idx}`,
-        title: s.title || `Shoot ${idx + 1}`,
-        category: s.category || 'Wedding',
-        shootType: s.shootType || 'own',
-        clientName: s.clientName || 'Imported Client',
-        clientPhone: s.clientPhone || '+91 ',
-        location: s.location || 'Location TBD',
-        primaryDate: s.primaryDate || format(now, 'yyyy-MM-dd'),
-        events: s.events || [],
-        totalAmount,
-        advanceAmount,
-        balanceAmount: Math.max(0, totalAmount - advanceAmount),
-        paymentStatus: advanceAmount >= totalAmount ? 'paid' : advanceAmount > 0 ? 'partial' : 'unpaid',
-        primaryPaymentMethod: 'Cash',
-        payments: advanceAmount > 0 ? [{ id: `pay-init-${idx}`, amount: advanceAmount, date: format(now, 'yyyy-MM-dd'), method: 'Cash' }] : [],
-        status: s.status || 'booked',
-        bookedAt: format(now, 'yyyy-MM-dd'),
-        retentionDaysLimit: 30,
-        isDataCleared: false,
-        wfolioStatus: 'none',
-        createdAt: format(now, 'yyyy-MM-dd HH:mm:ss'),
-        updatedAt: format(now, 'yyyy-MM-dd HH:mm:ss'),
-      };
-    });
-
-    setShoots(prev => [...prepared, ...prev]);
   };
 
   const getShootById = (id: string) => {
-    return shoots.find(s => s.id === id);
+    return shoots.find((s) => s.id === id);
+  };
+
+  const importShoots = (newShoots: Partial<Shoot>[]) => {
+    const now = new Date().toISOString();
+    const formatted: Shoot[] = newShoots.map((s, idx) => ({
+      id: `imported-${Date.now()}-${idx}`,
+      title: s.title || 'Untitled Shoot',
+      category: s.category || 'Wedding',
+      shootType: s.shootType || 'own',
+      agencyName: s.agencyName || '',
+      referredBy: s.referredBy || '',
+      clientName: s.clientName || 'Client',
+      clientPhone: s.clientPhone || '',
+      clientEmail: s.clientEmail || '',
+      clientInstagram: s.clientInstagram || '',
+      primaryDate: s.primaryDate || format(new Date(), 'yyyy-MM-dd'),
+      location: s.location || 'Studio Location',
+      totalAmount: s.totalAmount || 0,
+      advanceAmount: s.advanceAmount || 0,
+      balanceAmount: Math.max(0, (s.totalAmount || 0) - (s.advanceAmount || 0)),
+      paymentStatus: (s.advanceAmount || 0) >= (s.totalAmount || 0) && (s.totalAmount || 0) > 0 ? 'paid' : (s.advanceAmount || 0) > 0 ? 'partial' : 'unpaid',
+      status: s.status || 'booked',
+      bookedAt: s.bookedAt || now,
+      retentionDaysLimit: s.retentionDaysLimit || 30,
+      events: s.events || [],
+      payments: s.payments || [],
+      wfolioUrl: s.wfolioUrl || '',
+      wfolioPassword: s.wfolioPassword || '',
+      wfolioStatus: s.wfolioStatus || 'none',
+      rawFilesSizeGb: s.rawFilesSizeGb || 80,
+      storageDevice: s.storageDevice || 'SanDisk Extreme SSD 1TB',
+      isDataCleared: s.isDataCleared || false,
+      deliveredAt: s.deliveredAt,
+      dataRetentionDeadline: s.dataRetentionDeadline,
+      notes: s.notes || '',
+      createdAt: s.createdAt || now,
+      updatedAt: now,
+    }));
+
+    const merged = [...formatted, ...shoots];
+    persistShoots(merged);
   };
 
   const resetToSampleData = () => {
-    setShoots(INITIAL_SHOOTS);
-    localStorage.removeItem(STORAGE_KEY);
+    persistShoots(INITIAL_SHOOTS);
   };
 
-  // Compute live metrics
-  const totalShoots = shoots.length;
-  const totalRevenue = shoots.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
-  const totalReceived = shoots.reduce((sum, s) => sum + (s.advanceAmount || 0), 0);
-  const totalPending = shoots.reduce((sum, s) => sum + (s.balanceAmount || 0), 0);
+  // Metrics Calculations
+  const metrics = React.useMemo(() => {
+    const totalShoots = shoots.length;
+    let totalRevenue = 0;
+    let totalReceived = 0;
+    let cashReceived = 0;
+    let digitalReceived = 0;
+    let deliveredCount = 0;
+    let inEditingCount = 0;
+    let upcomingCount = 0;
+    let clearedCount = 0;
+    let retentionActiveCount = 0;
+    let criticalClearanceCount = 0;
+    let ownShootsCount = 0;
+    let ownShootsRevenue = 0;
+    let thirdPartyCount = 0;
+    let thirdPartyRevenue = 0;
 
-  // Compute Cash vs Digital payments
-  const paymentMethodTotals: Record<PaymentMethod, number> = {
-    'Cash': 0,
-    'UPI': 0,
-    'Bank Transfer': 0,
-    'Card': 0,
-    'Cheque': 0,
-    'Other': 0,
-  };
+    const paymentMethodTotals: Record<PaymentMethod, number> = {
+      'Cash': 0,
+      'UPI': 0,
+      'Bank Transfer': 0,
+      'Card': 0,
+      'Cheque': 0,
+      'Other': 0,
+    };
 
-  shoots.forEach(s => {
-    if (s.payments && s.payments.length > 0) {
-      s.payments.forEach(p => {
-        const method = p.method || 'Cash';
-        paymentMethodTotals[method] = (paymentMethodTotals[method] || 0) + p.amount;
-      });
-    } else if (s.advanceAmount > 0) {
-      const method = s.primaryPaymentMethod || 'Cash';
-      paymentMethodTotals[method] = (paymentMethodTotals[method] || 0) + s.advanceAmount;
-    }
-  });
+    const now = new Date();
 
-  const cashReceived = paymentMethodTotals['Cash'] || 0;
-  const digitalReceived = totalReceived - cashReceived;
+    shoots.forEach((shoot) => {
+      totalRevenue += shoot.totalAmount;
+      totalReceived += shoot.advanceAmount;
 
-  const deliveredCount = shoots.filter(s => s.status === 'delivered').length;
-  const inEditingCount = shoots.filter(s => s.status === 'editing').length;
-  const upcomingCount = shoots.filter(s => s.status === 'booked' || s.status === 'in_progress').length;
-  const clearedCount = shoots.filter(s => s.isDataCleared).length;
+      if (shoot.payments && shoot.payments.length > 0) {
+        shoot.payments.forEach(p => {
+          const method = p.method || 'Cash';
+          paymentMethodTotals[method] = (paymentMethodTotals[method] || 0) + p.amount;
+          if (method === 'Cash') {
+            cashReceived += p.amount;
+          } else {
+            digitalReceived += p.amount;
+          }
+        });
+      } else if (shoot.advanceAmount > 0) {
+        cashReceived += shoot.advanceAmount;
+        paymentMethodTotals['Cash'] += shoot.advanceAmount;
+      }
 
-  const retentionActiveCount = shoots.filter(s => s.deliveredAt && !s.isDataCleared).length;
-  
-  const today = new Date();
-  const criticalClearanceCount = shoots.filter(s => {
-    if (!s.deliveredAt || s.isDataCleared || !s.dataRetentionDeadline) return false;
-    const diff = (new Date(s.dataRetentionDeadline).getTime() - today.getTime()) / (1000 * 3600 * 24);
-    return diff <= 7;
-  }).length;
+      if (shoot.status === 'delivered') deliveredCount++;
+      if (shoot.status === 'editing') inEditingCount++;
+      if (shoot.status === 'booked' || shoot.status === 'in_progress') upcomingCount++;
+      if (shoot.isDataCleared || shoot.status === 'data_cleared') clearedCount++;
 
-  const ownShoots = shoots.filter(s => s.shootType === 'own');
-  const thirdPartyShoots = shoots.filter(s => s.shootType === 'third_party');
+      if (shoot.shootType === 'own') {
+        ownShootsCount++;
+        ownShootsRevenue += shoot.totalAmount;
+      } else {
+        thirdPartyCount++;
+        thirdPartyRevenue += shoot.totalAmount;
+      }
 
-  const ownShootsCount = ownShoots.length;
-  const ownShootsRevenue = ownShoots.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+      // Retention counts
+      if (shoot.deliveredAt && !shoot.isDataCleared) {
+        retentionActiveCount++;
+        if (shoot.dataRetentionDeadline) {
+          const deadline = new Date(shoot.dataRetentionDeadline);
+          const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysLeft <= 7) {
+            criticalClearanceCount++;
+          }
+        }
+      }
+    });
 
-  const thirdPartyCount = thirdPartyShoots.length;
-  const thirdPartyRevenue = thirdPartyShoots.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+    const totalPending = Math.max(0, totalRevenue - totalReceived);
 
-  const metrics = {
-    totalShoots,
-    totalRevenue,
-    totalReceived,
-    totalPending,
-    cashReceived,
-    digitalReceived,
-    deliveredCount,
-    inEditingCount,
-    upcomingCount,
-    clearedCount,
-    retentionActiveCount,
-    criticalClearanceCount,
-    ownShootsCount,
-    ownShootsRevenue,
-    thirdPartyCount,
-    thirdPartyRevenue,
-    paymentMethodTotals,
-  };
+    return {
+      totalShoots,
+      totalRevenue,
+      totalReceived,
+      totalPending,
+      cashReceived,
+      digitalReceived,
+      deliveredCount,
+      inEditingCount,
+      upcomingCount,
+      clearedCount,
+      retentionActiveCount,
+      criticalClearanceCount,
+      ownShootsCount,
+      ownShootsRevenue,
+      thirdPartyCount,
+      thirdPartyRevenue,
+      paymentMethodTotals,
+    };
+  }, [shoots]);
 
   return (
     <ShootContext.Provider
@@ -366,6 +454,9 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addPayment,
         getShootById,
         importShoots,
+        isSyncing,
+        lastSyncedAt,
+        triggerSync,
         theme,
         toggleTheme,
         metrics,
