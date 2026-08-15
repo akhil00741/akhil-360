@@ -157,6 +157,46 @@ export const ShootDetailModal: React.FC<ShootDetailModalProps> = ({
               </div>
             </div>
 
+            {/* 🚦 Beat The Traffic & 4-Hour Live Navigation Capsule */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-7 h-7 rounded-lg bg-ios-blue text-white flex items-center justify-center">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-900">Beat the Traffic & 4-Hour Early Route</h4>
+                    <p className="text-[11px] text-zinc-500">Apple Calendar automatically alerts your iPhone 4h & 2h before</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-ios-blue">
+                  4h / 2h Alerts Active
+                </span>
+              </div>
+
+              {shoot.location && (
+                <div className="flex items-center gap-2 pt-1">
+                  <a
+                    href={`http://maps.apple.com/?daddr=${encodeURIComponent(shoot.location)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-blue-200 text-xs font-bold text-ios-blue shadow-2xs transition-all active:scale-95"
+                  >
+                    <span>🍎 Apple Maps Traffic</span>
+                  </a>
+
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(shoot.location)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-white hover:bg-zinc-50 border border-blue-200 text-xs font-bold text-zinc-800 shadow-2xs transition-all active:scale-95"
+                  >
+                    <span>🗺️ Google Maps Live</span>
+                  </a>
+                </div>
+              )}
+            </div>
+
             {/* Pipeline Status Stepper */}
             <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200">
               <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-2.5">

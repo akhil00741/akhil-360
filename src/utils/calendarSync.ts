@@ -8,7 +8,7 @@ const formatToICalDate = (dateStr: string, timeStr = '09:00'): string => {
   return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 };
 
-// Generate iCal string for a single shoot or list of shoots
+// Generate iCal string with 4-Hour, 2-Hour, and 1-Hour Apple Alarms (VALARM)
 export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Photography Shoots'): string => {
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -21,7 +21,7 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
   ];
 
   shoots.forEach((shoot) => {
-    // If shoot has specific events, create VEVENT for each slot
+    // If shoot has specific events, create VEVENT for each slot with 4-Hour and 2-Hour Alarms
     if (shoot.events && shoot.events.length > 0) {
       shoot.events.forEach((evt) => {
         const dtStart = formatToICalDate(evt.date || shoot.primaryDate, evt.startTime || '09:00');
@@ -34,9 +34,31 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
         lines.push(`DTSTART:${dtStart}`);
         lines.push(`DTEND:${dtEnd}`);
         lines.push(`SUMMARY:📸 ${shoot.category}: ${shoot.title} (${evt.name})`);
-        lines.push(`DESCRIPTION:Client: ${shoot.clientName}\\nPhone: ${shoot.clientPhone}\\nType: ${shoot.shootType === 'own' ? 'Own Shoot' : `3rd Party: ${shoot.agencyName}`}\\nTotal: ₹${shoot.totalAmount}\\nwfolio: ${shoot.wfolioUrl || 'None'}`);
+        lines.push(`DESCRIPTION:Client: ${shoot.clientName}\\nPhone: ${shoot.clientPhone}\\nVenue: ${evt.venue || shoot.location}\\nTotal: ₹${shoot.totalAmount}\\nAdvance Paid: ₹${shoot.advanceAmount}\\nBalance Due: ₹${shoot.balanceAmount}\\nwfolio: ${shoot.wfolioUrl || 'None'}`);
         lines.push(`LOCATION:${evt.venue || shoot.location || 'Studio'}`);
         lines.push('STATUS:CONFIRMED');
+
+        // 4-Hour Early Traffic & Preparation Alarm for iPhone
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push(`DESCRIPTION:🚦 AKHIL 360 (4-Hour Alert): Prepare camera gear and check live traffic for ${shoot.title} at ${evt.venue || shoot.location}`);
+        lines.push('TRIGGER:-PT4H');
+        lines.push('END:VALARM');
+
+        // 2-Hour "Beat the Traffic" Departure Alarm
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push(`DESCRIPTION:🚗 AKHIL 360 (2-Hour Alert): Time to start driving to beat the traffic for ${shoot.title}!`);
+        lines.push('TRIGGER:-PT2H');
+        lines.push('END:VALARM');
+
+        // 1-Hour Final Countdown Alarm
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push(`DESCRIPTION:⏰ AKHIL 360 (1-Hour Alert): 1 hour remaining until ${shoot.title} shoot starts.`);
+        lines.push('TRIGGER:-PT1H');
+        lines.push('END:VALARM');
+
         lines.push('END:VEVENT');
       });
     } else {
@@ -50,9 +72,24 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
       lines.push(`DTSTART:${dtStart}`);
       lines.push(`DTEND:${dtEnd}`);
       lines.push(`SUMMARY:📸 ${shoot.category}: ${shoot.title}`);
-      lines.push(`DESCRIPTION:Client: ${shoot.clientName}\\nPhone: ${shoot.clientPhone}\\nTotal: ₹${shoot.totalAmount}\\nwfolio: ${shoot.wfolioUrl || 'None'}`);
+      lines.push(`DESCRIPTION:Client: ${shoot.clientName}\\nPhone: ${shoot.clientPhone}\\nVenue: ${shoot.location}\\nTotal: ₹${shoot.totalAmount}\\nAdvance Paid: ₹${shoot.advanceAmount}\\nBalance: ₹${shoot.balanceAmount}\\nwfolio: ${shoot.wfolioUrl || 'None'}`);
       lines.push(`LOCATION:${shoot.location || 'Studio'}`);
       lines.push('STATUS:CONFIRMED');
+
+      // 4-Hour Alarm
+      lines.push('BEGIN:VALARM');
+      lines.push('ACTION:DISPLAY');
+      lines.push(`DESCRIPTION:🚦 AKHIL 360 (4-Hour Alert): 4 hours until ${shoot.title}. Check traffic to ${shoot.location}.`);
+      lines.push('TRIGGER:-PT4H');
+      lines.push('END:VALARM');
+
+      // 2-Hour Alarm
+      lines.push('BEGIN:VALARM');
+      lines.push('ACTION:DISPLAY');
+      lines.push(`DESCRIPTION:🚗 AKHIL 360 (2-Hour Alert): Start now to beat the traffic for ${shoot.title}!`);
+      lines.push('TRIGGER:-PT2H');
+      lines.push('END:VALARM');
+
       lines.push('END:VEVENT');
     }
   });
@@ -84,7 +121,6 @@ export const parseAppleCalendarICS = (icsText: string): Partial<Shoot>[] => {
   for (let i = 1; i < events.length; i++) {
     const block = events[i].split('END:VEVENT')[0];
     
-    // Extract fields
     const summaryMatch = block.match(/SUMMARY:(.*?)(\r\n|\n|\r)/);
     const dtStartMatch = block.match(/DTSTART.*?:(\d{8}(T\d{4,6}Z?)?)/);
     const locationMatch = block.match(/LOCATION:(.*?)(\r\n|\n|\r)/);
