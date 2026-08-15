@@ -192,54 +192,6 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Payment Methods Breakdown Capsule */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 space-y-3 shadow-xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Banknote className="w-4 h-4 text-emerald-600" />
-            <h3 className="text-xs font-bold text-zinc-700 uppercase tracking-wider">
-              Payment Inflow Breakdown
-            </h3>
-          </div>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className="text-xs text-ios-blue hover:underline font-bold"
-          >
-            Analytics & Charts →
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-0.5">
-            <span className="text-[10px] font-bold text-emerald-800 uppercase block">💵 Cash in Hand</span>
-            <span className="text-base sm:text-lg font-black font-mono text-emerald-900">
-              {formatCurrency(metrics.paymentMethodTotals['Cash'] || 0)}
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 space-y-0.5">
-            <span className="text-[10px] font-bold text-blue-800 uppercase block">📱 UPI / GPay</span>
-            <span className="text-base sm:text-lg font-black font-mono text-blue-900">
-              {formatCurrency(metrics.paymentMethodTotals['UPI'] || 0)}
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-indigo-50/80 border border-indigo-200 space-y-0.5">
-            <span className="text-[10px] font-bold text-indigo-800 uppercase block">🏦 Bank Transfer</span>
-            <span className="text-base sm:text-lg font-black font-mono text-indigo-900">
-              {formatCurrency(metrics.paymentMethodTotals['Bank Transfer'] || 0)}
-            </span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-purple-50/80 border border-purple-200 space-y-0.5">
-            <span className="text-[10px] font-bold text-purple-800 uppercase block">💳 Card & Other</span>
-            <span className="text-base sm:text-lg font-black font-mono text-purple-900">
-              {formatCurrency((metrics.paymentMethodTotals['Card'] || 0) + (metrics.paymentMethodTotals['Cheque'] || 0) + (metrics.paymentMethodTotals['Other'] || 0))}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Empty State Banner if 0 shoots */}
       {shoots.length === 0 && (
         <div className="p-8 sm:p-10 rounded-2xl bg-white border border-zinc-200 text-center space-y-3.5 shadow-xs">
