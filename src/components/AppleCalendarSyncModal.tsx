@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useShoots } from '../context/ShootContext';
-import { X, Calendar, Copy, Check, Smartphone, ShieldCheck, Sparkles } from 'lucide-react';
+import { X, Calendar, Copy, Check, Smartphone, ShieldCheck, Sparkles, Download } from 'lucide-react';
 import { generateICalendar } from '../utils/calendarSync';
 
 interface AppleCalendarSyncModalProps {
@@ -12,21 +12,20 @@ export const AppleCalendarSyncModal: React.FC<AppleCalendarSyncModalProps> = ({ 
   const [copied, setCopied] = useState(false);
 
   const icsData = generateICalendar(shoots);
-  const appOrigin = window.location.origin;
-  const webcalUrl = `${appOrigin}/api/calendar/akhil360_shoots.ics`;
+  const calendarFeedUrl = `https://akhil00741.github.io/akhil-360/calendar.ics`;
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(webcalUrl);
+    navigator.clipboard.writeText(calendarFeedUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDirectSubscribe = () => {
+  const handleDirectSync = () => {
     const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'AKHIL_360_AutoSync.ics';
+    a.download = 'AKHIL_360_Shoots.ics';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -50,9 +49,9 @@ export const AppleCalendarSyncModal: React.FC<AppleCalendarSyncModalProps> = ({ 
             </div>
             <div>
               <h2 className="text-base font-extrabold text-zinc-900">
-                Apple Calendar Live Auto-Sync
+                Apple Calendar Sync
               </h2>
-              <p className="text-xs text-zinc-500 font-medium">Automatic background schedule synchronization</p>
+              <p className="text-xs text-zinc-500 font-medium">Add your photography shoots to iPhone Calendar</p>
             </div>
           </div>
           <button
@@ -66,73 +65,59 @@ export const AppleCalendarSyncModal: React.FC<AppleCalendarSyncModalProps> = ({ 
         {/* Content Body */}
         <div className="p-4 sm:p-6 space-y-5 overflow-y-auto max-h-[calc(92vh-130px)]">
           
-          {/* Status Badge */}
-          <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-2">
+          {/* Method 1: Instant 1-Tap Sync (Recommended) */}
+          <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-2.5">
             <div className="flex items-center space-x-2 text-ios-blue text-xs font-bold">
               <Sparkles className="w-4 h-4" />
-              <span>Apple Calendar (iCal) Live Subscription</span>
+              <span>Recommended: 1-Tap Direct Sync to iPhone</span>
             </div>
             <p className="text-xs text-zinc-700 leading-relaxed font-medium">
-              By adding this calendar feed to your iPhone or Mac, Apple Calendar will <strong>automatically sync</strong> all upcoming shoots, event time slots, client names, and venues directly into your native Calendar app.
+              Tap the button below. iPhone Safari will immediately prompt you to <strong>"Add All Events to Calendar"</strong>.
             </p>
-          </div>
-
-          {/* 1-Click Direct Subscribe Action */}
-          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-3">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-              1-Click Instant Sync to Apple Calendar
-            </h3>
             
             <button
-              onClick={handleDirectSubscribe}
+              onClick={handleDirectSync}
               className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold text-xs shadow-glow-blue transition-all active:scale-95"
             >
-              <Calendar className="w-4 h-4" />
+              <Download className="w-4 h-4" />
               <span>Sync {shoots.length} Shoots to Apple Calendar</span>
             </button>
-            <p className="text-[11px] text-zinc-500 text-center font-medium">
-              Tapping this opens Apple Calendar on your iPhone/Mac and adds the full schedule in 1 tap.
-            </p>
           </div>
 
-          {/* Instructions for iPhone */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Smartphone className="w-3.5 h-3.5 text-ios-blue" />
-              <span>How Apple Calendar Background Auto-Sync Works</span>
+          {/* Method 2: iPhone Subscribed Calendar Feed */}
+          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-3">
+            <h3 className="text-xs font-bold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Smartphone className="w-3.5 h-3.5 text-zinc-600" />
+              <span>Subscribed Calendar Feed URL</span>
             </h3>
 
-            <div className="space-y-2 text-xs text-zinc-600">
-              <div className="p-3 rounded-xl bg-white border border-zinc-200 flex items-start space-x-3 shadow-2xs">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-ios-blue font-bold flex items-center justify-center shrink-0 text-[11px]">
-                  1
-                </span>
-                <p className="leading-relaxed">
-                  On your iPhone, go to <strong>Settings ➔ Apps ➔ Calendar ➔ Calendar Accounts</strong>.
-                </p>
-              </div>
+            <p className="text-xs text-zinc-600 leading-relaxed font-medium">
+              If adding as a background subscribed calendar in iPhone Settings, use this exact calendar file URL:
+            </p>
 
-              <div className="p-3 rounded-xl bg-white border border-zinc-200 flex items-start space-x-3 shadow-2xs">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-ios-blue font-bold flex items-center justify-center shrink-0 text-[11px]">
-                  2
-                </span>
-                <p className="leading-relaxed">
-                  Tap <strong>Add Account ➔ Other ➔ Add Subscribed Calendar</strong>.
-                </p>
-              </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={calendarFeedUrl}
+                className="flex-1 bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs font-mono text-zinc-800 select-all"
+              />
+              <button
+                onClick={handleCopyLink}
+                className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold flex items-center gap-1 transition-colors shrink-0"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied!' : 'Copy'}</span>
+              </button>
+            </div>
 
-              <div className="p-3 rounded-xl bg-white border border-zinc-200 flex items-start space-x-3 shadow-2xs">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-ios-blue font-bold flex items-center justify-center shrink-0 text-[11px]">
-                  3
-                </span>
-                <p className="leading-relaxed">
-                  Set <strong>Auto-Refresh</strong> to <strong>Every 15 Minutes</strong> or <strong>Hourly</strong> for background syncing across all your Apple devices.
-                </p>
-              </div>
+            <div className="p-3 rounded-xl bg-white border border-zinc-200 space-y-1.5 text-xs text-zinc-600">
+              <p className="font-bold text-zinc-800">iPhone Settings Path:</p>
+              <p><strong>Settings ➔ Apps ➔ Calendar ➔ Calendar Accounts ➔ Add Account ➔ Other ➔ Add Subscribed Calendar</strong> ➔ Paste this URL.</p>
             </div>
           </div>
 
-          {/* Sync Security Note */}
+          {/* Security Note */}
           <div className="flex items-center space-x-2 text-xs text-zinc-500 font-medium">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Apple End-to-End Encrypted Calendar Protocol (RFC 5545)</span>
