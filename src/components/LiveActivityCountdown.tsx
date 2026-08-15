@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shoot } from '../types/shoot';
-import { Clock, Navigation, MapPin, Sparkles, MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Clock, Navigation, MapPin, Sparkles, MessageSquare, AlertCircle, CheckCircle2, Bell } from 'lucide-react';
 import { getWhatsAppLink } from '../utils/helpers';
 import { downloadAppleCalendar } from '../utils/calendarSync';
 
@@ -11,6 +11,7 @@ interface LiveActivityCountdownProps {
 
 export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ upcomingShoot, onOpenShoot }) => {
   const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number; isPast: boolean } | null>(null);
+  const [notifSent, setNotifSent] = useState(false);
 
   useEffect(() => {
     if (!upcomingShoot) return;
@@ -39,6 +40,30 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
     const timer = setInterval(calculateTime, 1000);
     return () => clearInterval(timer);
   }, [upcomingShoot]);
+
+  const handleTriggerTestNotification = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!upcomingShoot) return;
+    const venue = upcomingShoot.events?.[0]?.venue || upcomingShoot.location || 'Studio';
+
+    if ('Notification' in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification(`🚦 AKHIL 360 (Live Traffic Alert)`, {
+            body: `Countdown: Starts in ${timeLeft?.hours || 0}h ${timeLeft?.minutes || 0}m at ${venue}. Check traffic now to beat the rush!`,
+            icon: './apple-touch-icon.png',
+            badge: './favicon.png',
+          });
+          setNotifSent(true);
+          setTimeout(() => setNotifSent(false), 3000);
+        } else {
+          alert('Please allow notifications in Safari Settings to receive lock screen alerts.');
+        }
+      });
+    } else {
+      alert('Lock screen notifications will fire automatically from your Apple Calendar at 4h and 2h before the shoot.');
+    }
+  };
 
   if (!upcomingShoot || !timeLeft) return null;
 
@@ -123,8 +148,18 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
+            onClick={handleTriggerTestNotification}
+            className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-zinc-700 text-[11px]"
+            title="Test Lock Screen Banner Notification"
+          >
+            <Bell className="w-3 h-3 text-amber-400" />
+            <span>{notifSent ? '✅ Alert Sent!' : '🔔 Test Alert'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => downloadAppleCalendar([upcomingShoot], `${upcomingShoot.title.replace(/\s+/g, '_')}.ics`)}
-            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-zinc-700"
+            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-zinc-700 text-xs"
             title="Sync this shoot to Apple Calendar with 4h and 2h alerts"
           >
             <Clock className="w-3 h-3 text-ios-blue" />
@@ -135,7 +170,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(venue)}`}
             target="_blank"
             rel="noreferrer"
-            className="px-3 py-1.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95"
+            className="px-3 py-1.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 text-xs"
           >
             <Navigation className="w-3 h-3" />
             <span>Google Maps Route</span>
@@ -146,7 +181,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
               href={getWhatsAppLink(upcomingShoot.clientPhone, `Hi ${upcomingShoot.clientName}, I am on track for our shoot today at ${venue}!`)}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 text-xs"
             >
               <MessageSquare className="w-3 h-3" />
               <span>WhatsApp</span>
