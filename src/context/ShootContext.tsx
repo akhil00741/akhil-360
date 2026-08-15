@@ -5,13 +5,14 @@ import { addDays, format } from 'date-fns';
 import { fetchCloudShoots, saveCloudShoots } from '../utils/cloudSync';
 
 const STORAGE_KEY = 'akhil_360_shoots_prod_v1';
+const DELETED_KEY = 'akhil_360_deleted_ids_v1';
 const THEME_KEY = 'akhil_360_theme';
 
 interface ShootContextType {
   shoots: Shoot[];
   addShoot: (shoot: Omit<Shoot, 'id' | 'createdAt' | 'updatedAt' | 'balanceAmount'>) => Shoot;
   updateShoot: (id: string, updates: Partial<Shoot>) => void;
-  deleteShoot: (id: string) => void;
+  deleteShoot: (id: string) => Promise<void>;
   markAsDelivered: (id: string, deliveredAtDate?: string, wfolioUrl?: string) => void;
   markDataCleared: (id: string, notes?: string) => void;
   addPayment: (shootId: string, payment: Omit<PaymentRecord, 'id'>) => void;
@@ -63,11 +64,26 @@ interface ShootContextType {
 const ShootContext = createContext<ShootContextType | undefined>(undefined);
 
 export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(DELETED_KEY);
+      if (saved) {
+        return new Set(JSON.parse(saved));
+      }
+    } catch (e) {}
+    return new Set<string>();
+  });
+  const deletedIdsRef = useRef<Set<string>>(deletedIds);
+  deletedIdsRef.current = deletedIds;
+
   const [shoots, setShoots] = useState<Shoot[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed: Shoot[] = JSON.parse(saved);
+        const savedDeleted = localStorage.getItem(DELETED_KEY);
+        const delSet = savedDeleted ? new Set(JSON.parse(savedDeleted)) : new Set();
+        return parsed.filter(s => !delSet.has(s.id));
       }
     } catch (e) {
       console.error('Failed to parse shoots from local storage', e);
@@ -89,16 +105,23 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [reminderModalShoot, setReminderModalShoot] = useState<Shoot | null>(null);
 
-  // Sync to Cloud function
+  // Sync to Cloud function with Tombstone Deletion protection
   const triggerSync = useCallback(async () => {
     setIsSyncing(true);
     try {
       const cloudData = await fetchCloudShoots();
       if (cloudData && Array.isArray(cloudData)) {
+        // Filter out any shoot that was deleted
+        const activeCloudShoots = cloudData.filter(s => !deletedIdsRef.current.has(s.id));
         const localMap = new Map(shootsRef.current.map(s => [s.id, s]));
         let hasChanges = false;
 
-        cloudData.forEach(cloudShoot => {
+        // Check if any deleted shoot is still in the cloud
+        if (activeCloudShoots.length !== cloudData.length) {
+          hasChanges = true;
+        }
+
+        activeCloudShoots.forEach(cloudShoot => {
           const localShoot = localMap.get(cloudShoot.id);
           if (!localShoot || (new Date(cloudShoot.updatedAt || 0) > new Date(localShoot.updatedAt || 0))) {
             localMap.set(cloudShoot.id, cloudShoot);
@@ -106,20 +129,24 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         });
 
+        // Check local shoots vs cloud
         localMap.forEach((shoot, id) => {
-          if (!cloudData.some(c => c.id === id)) {
+          if (deletedIdsRef.current.has(id)) {
+            localMap.delete(id);
             hasChanges = true;
           }
         });
 
-        const merged = Array.from(localMap.values());
-        if (hasChanges || shootsRef.current.length !== merged.length) {
-          setShoots(merged);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        const merged = Array.from(localMap.values()).filter(s => !deletedIdsRef.current.has(s.id));
+        setShoots(merged);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+
+        if (hasChanges || cloudData.length !== merged.length) {
           await saveCloudShoots(merged);
         }
       } else if (shootsRef.current.length > 0) {
-        await saveCloudShoots(shootsRef.current);
+        const cleanShoots = shootsRef.current.filter(s => !deletedIdsRef.current.has(s.id));
+        await saveCloudShoots(cleanShoots);
       }
       setLastSyncedAt(new Date());
     } catch (e) {
@@ -135,7 +162,7 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const interval = setInterval(() => {
       triggerSync();
-    }, 12000); // Check every 12 seconds
+    }, 15000); // Check every 15 seconds
 
     const handleFocus = () => {
       triggerSync();
@@ -150,9 +177,10 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Persist to local storage and sync to cloud
   const persistShoots = (newShoots: Shoot[]) => {
-    setShoots(newShoots);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newShoots));
-    saveCloudShoots(newShoots).then(() => {
+    const cleanShoots = newShoots.filter(s => !deletedIdsRef.current.has(s.id));
+    setShoots(cleanShoots);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanShoots));
+    saveCloudShoots(cleanShoots).then(() => {
       setLastSyncedAt(new Date());
     });
   };
@@ -244,11 +272,30 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const deleteShoot = (id: string) => {
-    const updatedShoots = shoots.filter((s) => s.id !== id);
-    persistShoots(updatedShoots);
+  const deleteShoot = async (id: string) => {
+    // 1. Add to deleted tombstone list
+    const newDeleted = new Set(deletedIdsRef.current);
+    newDeleted.add(id);
+    setDeletedIds(newDeleted);
+    deletedIdsRef.current = newDeleted;
+    localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(newDeleted)));
+
+    // 2. Remove from local state
+    const updatedShoots = shootsRef.current.filter((s) => s.id !== id);
+    setShoots(updatedShoots);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedShoots));
+
     if (selectedShoot?.id === id) {
       setSelectedShoot(null);
+    }
+
+    // 3. Immediately overwrite cloud database
+    setIsSyncing(true);
+    try {
+      await saveCloudShoots(updatedShoots);
+      setLastSyncedAt(new Date());
+    } finally {
+      setIsSyncing(false);
     }
   };
 
