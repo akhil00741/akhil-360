@@ -50,9 +50,14 @@ export const DashboardView: React.FC = () => {
     .filter(item => item.retention && (item.retention.isExpired || item.retention.daysLeft <= 7))
     .slice(0, 3);
 
-  // Upcoming shoots
+  // Upcoming shoots (sorted chronologically by date)
   const upcomingShoots = shoots
     .filter(s => s.status === 'booked' || s.status === 'in_progress')
+    .sort((a, b) => {
+      const dateA = new Date(`${a.primaryDate}T${a.events?.[0]?.startTime || '09:00'}:00`).getTime();
+      const dateB = new Date(`${b.primaryDate}T${b.events?.[0]?.startTime || '09:00'}:00`).getTime();
+      return dateA - dateB;
+    })
     .slice(0, 4);
 
   // Recent delivered / active shoots
