@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useShoots } from '../context/ShootContext';
 import { Shoot, ShootStatus, PaymentRecord, PaymentMethod } from '../types/shoot';
 import { 
-  X, Calendar, Clock, MapPin, Phone, 
+  X, Calendar, Clock, MapPin, Phone, Mail, 
   MessageSquare, Plus, IndianRupee, Shield, Check, HardDrive, 
   Trash2, Edit3, Banknote, AlertCircle, Globe, ChevronRight 
 } from 'lucide-react';
@@ -264,34 +264,56 @@ export const ShootDetailModal: React.FC<ShootDetailModalProps> = ({
                 </button>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-base font-bold text-zinc-900">{shoot.clientName}</p>
-                  <p className="text-xs text-zinc-600 font-mono">{shoot.clientPhone || 'No phone number'}</p>
-                  {shoot.clientEmail && <p className="text-xs text-zinc-500">{shoot.clientEmail}</p>}
-                  {shoot.clientInstagram && <p className="text-xs text-ios-blue font-semibold">{shoot.clientInstagram}</p>}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <p className="text-base font-extrabold text-zinc-900">{shoot.clientName}</p>
+                  <p className="text-xs text-zinc-600 font-mono flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-zinc-400" />
+                    <span>{shoot.clientPhone || 'No phone number'}</span>
+                  </p>
+                  {shoot.clientEmail ? (
+                    <p className="text-xs text-blue-700 font-semibold flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-ios-blue" />
+                      <span>{shoot.clientEmail}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-zinc-400 italic">No Gmail / Email entered</p>
+                  )}
+                  {shoot.clientInstagram && <p className="text-xs text-purple-700 font-semibold">{shoot.clientInstagram}</p>}
                 </div>
 
-                {shoot.clientPhone && (
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2">
+                  {shoot.clientPhone && (
+                    <>
+                      <a
+                        href={`tel:${shoot.clientPhone}`}
+                        className="p-2.5 rounded-xl bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-200 transition-colors shadow-2xs"
+                        title="Call Client"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </a>
+                      <a
+                        href={getWhatsAppLink(shoot.clientPhone, `Hi ${shoot.clientName}, regarding our shoot with AKHIL 360...`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-glow-green transition-colors"
+                        title="WhatsApp Client"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                      </a>
+                    </>
+                  )}
+
+                  {shoot.clientEmail && (
                     <a
-                      href={`tel:${shoot.clientPhone}`}
-                      className="p-2.5 rounded-xl bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-200 transition-colors shadow-2xs"
-                      title="Call Client"
+                      href={`mailto:${shoot.clientEmail}?subject=Photos & Updates: ${encodeURIComponent(shoot.title)} - AKHIL 360&body=Hi ${encodeURIComponent(shoot.clientName)},%0D%0A%0D%0ARegarding our photography shoot "${encodeURIComponent(shoot.title)}"...`}
+                      className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-ios-blue border border-blue-200 transition-colors shadow-2xs"
+                      title="Open Gmail / Email Client"
                     >
-                      <Phone className="w-4 h-4" />
+                      <Mail className="w-4 h-4" />
                     </a>
-                    <a
-                      href={getWhatsAppLink(shoot.clientPhone, `Hi ${shoot.clientName}, regarding our shoot with AKHIL 360...`)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-glow-green transition-colors"
-                      title="WhatsApp Client"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                    </a>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useShoots } from '../context/ShootContext';
 import { Shoot, ShootCategory, ShootType, ShootStatus, ShootEventSlot, PaymentMethod } from '../types/shoot';
-import { X, Plus, Trash2, Calendar, Clock, IndianRupee, Globe, Shield, User, Building, MapPin, Camera, Banknote, Landmark, Smartphone, CreditCard, FileText } from 'lucide-react';
+import { X, Plus, Trash2, Calendar, Clock, IndianRupee, Globe, Shield, User, Building, MapPin, Camera, Banknote, Landmark, Smartphone, CreditCard, FileText, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '../utils/helpers';
 
@@ -410,13 +410,16 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-zinc-700 block mb-1">Client Email (Optional)</label>
+                <label className="text-xs font-semibold text-zinc-700 flex items-center gap-1 mb-1">
+                  <Mail className="w-3.5 h-3.5 text-ios-blue" />
+                  <span>Client Gmail / Email ID</span>
+                </label>
                 <input
                   type="email"
                   placeholder="client@gmail.com"
                   value={clientEmail}
                   onChange={(e) => setClientEmail(e.target.value)}
-                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white"
+                  className="w-full bg-[#F8F9FB] border border-zinc-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-ios-blue focus:bg-white font-mono"
                 />
               </div>
 
