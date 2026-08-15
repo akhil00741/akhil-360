@@ -39,8 +39,8 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] text-[#1C1C1E] dark:bg-black dark:text-white selection:bg-ios-blue selection:text-white flex flex-col font-sans transition-colors">
-      {/* iOS Top Blur Navigation Header */}
+    <div className="min-h-screen bg-[#F5F6F9] text-[#111827] selection:bg-ios-blue selection:text-white flex flex-col font-sans">
+      {/* Top Navigation Header */}
       <Header onOpenAppleSync={() => setIsAppleCalendarModalOpen(true)} />
 
       {/* Main Dynamic View Area */}

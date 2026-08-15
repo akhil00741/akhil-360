@@ -1,90 +1,50 @@
 import React from 'react';
 import { useShoots } from '../context/ShootContext';
-import { Plus, Camera, AlertCircle, Sun, Moon, Calendar, Banknote } from 'lucide-react';
-import { formatCurrency } from '../utils/helpers';
+import { Plus, Camera, Calendar } from 'lucide-react';
 
 interface HeaderProps {
   onOpenAppleSync?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
-  const { setIsCreateModalOpen, metrics, theme, toggleTheme } = useShoots();
+  const { setIsCreateModalOpen } = useShoots();
 
   return (
-    <header className="sticky top-0 z-30 ios-glass-header px-4 py-3 sm:px-6 transition-all">
+    <header className="sticky top-0 z-30 ios-glass-header px-4 py-3 sm:px-6">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         
-        {/* Left Branding - Luxury Studio Crest */}
-        <div className="flex items-center space-x-3 sm:space-x-3.5">
-          <div className="relative group">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-zinc-900 via-blue-950 to-black dark:from-zinc-800 dark:to-zinc-950 p-[1.5px] shadow-sm flex items-center justify-center transition-transform group-hover:scale-105">
-              <div className="w-full h-full bg-white dark:bg-[#121214] rounded-[14px] flex items-center justify-center">
-                <Camera className="w-5 h-5 text-ios-blue dark:text-cyan-400 stroke-[2.2]" />
-              </div>
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-[#0A0A0C] rounded-full shadow-xs"></span>
+        {/* Left Branding - Clean & Elegant */}
+        <div className="flex items-center space-x-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shadow-xs">
+            <Camera className="w-4 h-4 text-ios-blue stroke-[2.4]" />
           </div>
-
           <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-zinc-950 dark:text-white flex items-center gap-1.5 font-sans">
-                AKHIL <span className="bg-gradient-to-r from-[#0066FF] via-[#4F46E5] to-[#7C3AED] bg-clip-text text-transparent">360</span>
-              </h1>
-              <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-blue-50/80 dark:bg-ios-blue/15 text-[#0066FF] dark:text-cyan-400 border border-blue-200/80 dark:border-ios-blue/30 shadow-2xs">
-                PRO
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-semibold mt-0.5">
-              <span className="text-zinc-500 dark:text-zinc-400">{metrics.totalShoots} Shoots</span>
-              <span className="text-zinc-300 dark:text-zinc-700">•</span>
-              {/* Prominent Cash in Hand Header Badge */}
-              <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/80 dark:border-emerald-800/60">
-                <Banknote className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Cash: {formatCurrency(metrics.cashReceived)}</span>
-              </span>
-            </div>
+            <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-zinc-900 flex items-center gap-1">
+              AKHIL <span className="text-ios-blue">360</span>
+            </h1>
+            <p className="text-[11px] text-zinc-500 font-medium leading-none">
+              Photography Studio
+            </p>
           </div>
         </div>
 
-        {/* Right Actions */}
+        {/* Right Actions - Simple, Minimal & Clean */}
         <div className="flex items-center space-x-2">
           
-          {/* Apple Calendar Quick Auto-Sync */}
+          {/* Apple Calendar Quick Sync Icon */}
           <button
             onClick={onOpenAppleSync}
             title="Apple Calendar Live Auto-Sync"
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[#16161A] hover:bg-zinc-50 dark:hover:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 shadow-2xs transition-all active:scale-95"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-700 shadow-2xs transition-all active:scale-95"
           >
             <Calendar className="w-3.5 h-3.5 text-ios-blue" />
-            <span className="hidden sm:inline">Apple Cal Sync</span>
-            <span className="sm:hidden">Cal</span>
+            <span className="hidden sm:inline">Apple Cal</span>
           </button>
 
-          {/* Theme Toggle (Light / Dark) */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl bg-white dark:bg-[#16161A] hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors shadow-2xs"
-            title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
-          >
-            {theme === 'light' ? (
-              <Moon className="w-4 h-4 text-zinc-700 stroke-[2.2]" />
-            ) : (
-              <Sun className="w-4 h-4 text-amber-400 stroke-[2.2]" />
-            )}
-          </button>
-
-          {/* Critical Purge Warning Pill */}
-          {metrics.criticalClearanceCount > 0 && (
-            <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 dark:bg-red-950/60 border border-rose-200 dark:border-red-800/80 text-rose-600 dark:text-red-300 text-xs font-extrabold animate-pulse">
-              <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
-              <span>{metrics.criticalClearanceCount} Due</span>
-            </div>
-          )}
-
-          {/* New Shoot Button */}
+          {/* New Shoot Primary Button */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#0066FF] to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white text-xs sm:text-sm font-bold shadow-glow-blue transition-all active:scale-95"
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-ios-blue hover:bg-blue-600 text-white text-xs font-bold shadow-glow-blue transition-all active:scale-95"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>New Shoot</span>
