@@ -43,14 +43,28 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
 
   const handleTriggerTestNotification = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!upcomingShoot) return;
+    if (!upcomingShoot || !timeLeft) return;
     const venue = upcomingShoot.events?.[0]?.venue || upcomingShoot.location || 'Studio';
+
+    let alertTitle = '🚦 AKHIL 360 (Live Traffic Alert)';
+    let alertBody = `Countdown: ${timeLeft.hours > 0 ? `${timeLeft.hours}h ` : ''}${timeLeft.minutes}m left until ${upcomingShoot.title} at ${venue}. Head out now to beat traffic!`;
+
+    if (timeLeft.hours >= 4) {
+      alertTitle = '🚦 AKHIL 360 (4-Hour Alert): Early Prep';
+      alertBody = `4 hours until ${upcomingShoot.title} at ${venue}. Check batteries, memory cards & live traffic!`;
+    } else if (timeLeft.hours >= 2) {
+      alertTitle = '🚗 AKHIL 360 (2-Hour Alert): Departure Advisory';
+      alertBody = `2 hours remaining until ${upcomingShoot.title} at ${venue}. Time to start driving to beat rush-hour delays.`;
+    } else if (timeLeft.hours < 1) {
+      alertTitle = '⏰ AKHIL 360 (Final Alert): Arrival & Setup';
+      alertBody = `Only ${timeLeft.minutes} minutes remaining until ${upcomingShoot.title} starts at ${venue}!`;
+    }
 
     if ('Notification' in window) {
       Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
-          new Notification(`🚦 AKHIL 360 (Live Traffic Alert)`, {
-            body: `Countdown: Starts in ${timeLeft?.hours || 0}h ${timeLeft?.minutes || 0}m at ${venue}. Check traffic now to beat the rush!`,
+          new Notification(alertTitle, {
+            body: alertBody,
             icon: './apple-touch-icon.png',
             badge: './favicon.png',
           });
@@ -61,7 +75,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         }
       });
     } else {
-      alert('Lock screen notifications will fire automatically from your Apple Calendar at 4h and 2h before the shoot.');
+      alert('Lock screen notifications will fire automatically from your Apple Calendar before the shoot.');
     }
   };
 
@@ -69,6 +83,23 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
 
   const eventSlot = upcomingShoot.events?.[0];
   const venue = eventSlot?.venue || upcomingShoot.location || 'Studio';
+
+  // Dynamic traffic advisory text
+  const getTrafficAdvisory = () => {
+    if (timeLeft.isPast) {
+      return <span className="text-emerald-400 font-bold">Session is currently in progress on location.</span>;
+    }
+    if (timeLeft.hours >= 4) {
+      return <span>Traffic status: <strong>Clear</strong> (Start 4h gear check)</span>;
+    }
+    if (timeLeft.hours >= 2) {
+      return <span>Departure Advisory: <strong className="text-amber-400">Start Driving (2h to shoot)</strong></span>;
+    }
+    if (timeLeft.hours === 1) {
+      return <span>Rush Alert: <strong className="text-amber-300">1 Hour Remaining (Head to {venue})</strong></span>;
+    }
+    return <span>Arrival & Setup: <strong className="text-rose-400">{timeLeft.minutes}m Left (Setup lighting now)</strong></span>;
+  };
 
   return (
     <div 
@@ -89,7 +120,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         <div className="flex items-center space-x-1.5 bg-zinc-800/80 px-2.5 py-1 rounded-full border border-zinc-700">
           <Clock className="w-3 h-3 text-emerald-400" />
           <span className="text-[11px] font-mono font-bold text-emerald-400">
-            {timeLeft.isPast ? 'IN PROGRESS' : 'COUNTDOWN'}
+            {timeLeft.isPast ? 'IN PROGRESS' : timeLeft.hours === 1 ? '1 HOUR TO SHOOT' : timeLeft.hours === 0 ? `${timeLeft.minutes}M TO SHOOT` : 'COUNTDOWN'}
           </span>
         </div>
       </div>
@@ -142,7 +173,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
       <div className="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center space-x-1.5 text-zinc-300 font-medium">
           <Navigation className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Traffic status: <strong>Clear</strong> (Start 45m early to beat rush)</span>
+          {getTrafficAdvisory()}
         </div>
 
         <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
@@ -160,7 +191,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
             type="button"
             onClick={() => downloadAppleCalendar([upcomingShoot], `${upcomingShoot.title.replace(/\s+/g, '_')}.ics`)}
             className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-zinc-700 text-xs"
-            title="Sync this shoot to Apple Calendar with 4h and 2h alerts"
+            title="Sync this shoot to Apple Calendar with 4h, 2h, and 1h alerts"
           >
             <Clock className="w-3 h-3 text-ios-blue" />
             <span>🍎 Sync Apple Cal</span>
