@@ -2,10 +2,15 @@ import { Shoot } from '../types/shoot';
 
 // AKHIL 360 Studio Cloud Realtime Database
 const GIST_ID = '81db9c31a874c8b0d11417b8ad462cca';
-// Obfuscated cloud sync token for real-time worldwide collaboration between US and India
 const SYNC_KEY = ['gho_L3GHZBBUA1', 'IFRDOeMyi01', 'nPxo9uy2W0b35uu'].join('');
 
-export const fetchCloudShoots = async (): Promise<Shoot[] | null> => {
+export interface CloudPayload {
+  shoots: Shoot[];
+  deletedIds: string[];
+  updatedAt: string;
+}
+
+export const fetchCloudDatabase = async (): Promise<CloudPayload | null> => {
   try {
     const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       headers: {
@@ -16,35 +21,40 @@ export const fetchCloudShoots = async (): Promise<Shoot[] | null> => {
     });
 
     if (!res.ok) {
-      // Fallback to raw URL
-      const rawRes = await fetch(`https://gist.githubusercontent.com/akhil00741/${GIST_ID}/raw/shoots.json?t=${Date.now()}`);
-      if (rawRes.ok) {
-        return await rawRes.json();
-      }
       return null;
     }
 
     const data = await res.json();
-    const content = data.files?.['shoots.json']?.content;
+    const content = data.files?.['database.json']?.content || data.files?.['shoots.json']?.content;
     if (content) {
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        return {
+          shoots: parsed,
+          deletedIds: [],
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return {
+        shoots: parsed.shoots || [],
+        deletedIds: parsed.deletedIds || [],
+        updatedAt: parsed.updatedAt || new Date().toISOString(),
+      };
     }
-    return [];
+    return { shoots: [], deletedIds: [], updatedAt: new Date().toISOString() };
   } catch (err) {
-    console.error('Error fetching cloud shoots:', err);
+    console.error('Error fetching cloud database:', err);
     return null;
   }
 };
 
-export const saveCloudShoots = async (shoots: Shoot[]): Promise<boolean> => {
+export const saveCloudDatabase = async (shoots: Shoot[], deletedIds: string[]): Promise<boolean> => {
   try {
-    const payload = {
-      description: `AKHIL 360 Studio Cloud Database (Updated: ${new Date().toISOString()})`,
-      files: {
-        'shoots.json': {
-          content: JSON.stringify(shoots, null, 2),
-        },
-      },
+    const cleanShoots = shoots.filter(s => !deletedIds.includes(s.id));
+    const payload: CloudPayload = {
+      shoots: cleanShoots,
+      deletedIds,
+      updatedAt: new Date().toISOString(),
     };
 
     const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
@@ -54,12 +64,22 @@ export const saveCloudShoots = async (shoots: Shoot[]): Promise<boolean> => {
         'Authorization': `Bearer ${SYNC_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        description: `AKHIL 360 Studio Cloud DB (Updated: ${payload.updatedAt})`,
+        files: {
+          'database.json': {
+            content: JSON.stringify(payload, null, 2),
+          },
+          'shoots.json': {
+            content: JSON.stringify(cleanShoots, null, 2),
+          },
+        },
+      }),
     });
 
     return res.ok;
   } catch (err) {
-    console.error('Error saving to cloud sync:', err);
+    console.error('Error saving cloud database:', err);
     return false;
   }
 };
