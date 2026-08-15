@@ -508,22 +508,6 @@ export const ShootDetailModal: React.FC<ShootDetailModalProps> = ({
               )}
             </div>
 
-            {/* Delete Shoot Section */}
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-rose-800">Delete Shoot Record</h4>
-                <p className="text-[11px] text-rose-600">Permanently remove this shoot, schedule slots, and ledger data.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Shoot</span>
-              </button>
-            </div>
-
           </div>
 
           {/* Footer */}
@@ -536,13 +520,25 @@ export const ShootDetailModal: React.FC<ShootDetailModalProps> = ({
               <span>Send Reminder</span>
             </button>
 
-            <button
-              onClick={() => onEdit(shoot)}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white text-xs font-bold shadow-glow-blue transition-all active:scale-95"
-            >
-              <Edit3 className="w-4 h-4" />
-              <span>Edit Shoot</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all active:scale-95"
+                title="Delete Shoot"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </button>
+
+              <button
+                onClick={() => onEdit(shoot)}
+                className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white text-xs font-bold shadow-glow-blue transition-all active:scale-95"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Edit Shoot</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -551,16 +547,16 @@ export const ShootDetailModal: React.FC<ShootDetailModalProps> = ({
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-sm bg-white border border-zinc-200 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center mx-auto text-rose-600">
-              <AlertCircle className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto text-rose-600">
+              <Trash2 className="w-6 h-6" />
             </div>
 
             <div className="space-y-1">
               <h3 className="text-base font-extrabold text-zinc-900">
-                Delete "{shoot.title}"?
+                Delete Permanently?
               </h3>
               <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-                This action cannot be undone. All time slots, payments, and 30-day retention logs will be permanently erased.
+                Are you sure you want to permanently delete <strong>"{shoot.title}"</strong> across all devices?
               </p>
             </div>
 
@@ -578,7 +574,7 @@ export const ShootDetailModal: React.FC<ShootDetailModalProps> = ({
                 onClick={confirmDelete}
                 className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-all active:scale-95"
               >
-                Yes, Delete
+                Delete Permanently
               </button>
             </div>
           </div>
