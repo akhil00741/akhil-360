@@ -1,6 +1,6 @@
 import React from 'react';
 import { useShoots } from '../context/ShootContext';
-import { Plus, Camera, AlertCircle, Sun, Moon, Calendar, Sparkles } from 'lucide-react';
+import { Plus, Camera, AlertCircle, Sun, Moon, Calendar, Banknote } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
 
 interface HeaderProps {
@@ -15,9 +15,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         
         {/* Left Branding - Luxury Studio Crest */}
-        <div className="flex items-center space-x-3.5">
+        <div className="flex items-center space-x-3 sm:space-x-3.5">
           <div className="relative group">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-zinc-900 via-blue-950 to-black dark:from-zinc-800 dark:to-zinc-950 p-[1.5px] shadow-sm flex items-center justify-center transition-transform group-hover:scale-105">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-zinc-900 via-blue-950 to-black dark:from-zinc-800 dark:to-zinc-950 p-[1.5px] shadow-sm flex items-center justify-center transition-transform group-hover:scale-105">
               <div className="w-full h-full bg-white dark:bg-[#121214] rounded-[14px] flex items-center justify-center">
                 <Camera className="w-5 h-5 text-ios-blue dark:text-cyan-400 stroke-[2.2]" />
               </div>
@@ -31,14 +31,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
                 AKHIL <span className="bg-gradient-to-r from-[#0066FF] via-[#4F46E5] to-[#7C3AED] bg-clip-text text-transparent">360</span>
               </h1>
               <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-blue-50/80 dark:bg-ios-blue/15 text-[#0066FF] dark:text-cyan-400 border border-blue-200/80 dark:border-ios-blue/30 shadow-2xs">
-                STUDIO PRO
+                PRO
               </span>
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold flex items-center gap-1.5 mt-0.5">
-              <span>{metrics.totalShoots} Registered</span>
+            <div className="flex items-center gap-2 text-xs font-semibold mt-0.5">
+              <span className="text-zinc-500 dark:text-zinc-400">{metrics.totalShoots} Shoots</span>
               <span className="text-zinc-300 dark:text-zinc-700">•</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">{formatCurrency(metrics.totalRevenue)} Billed</span>
-            </p>
+              {/* Prominent Cash in Hand Header Badge */}
+              <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/80 dark:border-emerald-800/60">
+                <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Cash: {formatCurrency(metrics.cashReceived)}</span>
+              </span>
+            </div>
           </div>
         </div>
 

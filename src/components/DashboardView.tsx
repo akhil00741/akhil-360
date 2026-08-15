@@ -3,7 +3,7 @@ import { useShoots } from '../context/ShootContext';
 import { 
   TrendingUp, Calendar, AlertTriangle, Plus, Shield, 
   Clock, MapPin, CheckCircle2, Globe, MessageSquare, 
-  ChevronRight, DollarSign, Sparkles, Building, User, Banknote, Landmark, Smartphone, HardDrive 
+  ChevronRight, DollarSign, Sparkles, Building, User, Banknote, Landmark, Smartphone, HardDrive, Wallet 
 } from 'lucide-react';
 import { formatCurrency, formatDate, calculateRetentionStatus } from '../utils/helpers';
 
@@ -39,7 +39,6 @@ export const DashboardView: React.FC = () => {
       
       {/* Top Luxury Studio Cockpit Banner */}
       <div className="relative overflow-hidden bg-gradient-to-br from-white via-[#F8FAFC] to-[#EEF2F6] dark:from-[#16161A] dark:via-[#121216] dark:to-[#0A0A0C] p-5 sm:p-7 rounded-[28px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-ios transition-all">
-        {/* Subtle ambient luxury light blob */}
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 -mb-8 w-40 h-40 bg-emerald-500/10 dark:bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -131,78 +130,87 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* KPI Financial Metric Cards */}
+      {/* TOP KPI ROW: Featuring Prominent CASH IN HAND Card */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
-        {/* Total Billed Revenue */}
-        <div className="p-4 sm:p-5 rounded-[24px] ios-glass-card space-y-2 relative overflow-hidden group">
+        {/* PROMINENT CARD 1: 💵 CASH IN HAND */}
+        <div className="p-4 sm:p-5 rounded-[24px] bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white space-y-2 relative overflow-hidden shadow-glow-green group">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
+          <div className="flex items-center justify-between relative z-10">
+            <span className="text-xs font-extrabold text-emerald-100 uppercase tracking-wider flex items-center gap-1">
+              <Wallet className="w-3.5 h-3.5" />
+              <span>Cash in Hand</span>
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-xs">
+              <Banknote className="w-4 h-4 stroke-[2.5]" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white relative z-10">
+            {formatCurrency(metrics.cashReceived)}
+          </p>
+          <div className="flex items-center justify-between text-[11px] text-emerald-100 font-bold relative z-10">
+            <span>Physical Cash</span>
+            <span>{metrics.totalReceived > 0 ? Math.round((metrics.cashReceived / metrics.totalReceived) * 100) : 0}% of Collected</span>
+          </div>
+        </div>
+
+        {/* PROMINENT CARD 2: 🏦 DIGITAL & BANK INFLOW */}
+        <div className="p-4 sm:p-5 rounded-[24px] ios-glass-card space-y-2 relative overflow-hidden group border-blue-200/80 dark:border-blue-900/40">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Gross Billed</span>
+            <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+              <Landmark className="w-3.5 h-3.5 text-ios-blue" />
+              <span>Bank & UPI Inflow</span>
+            </span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-ios-blue/15 border border-blue-200/80 dark:border-ios-blue/30 flex items-center justify-center text-ios-blue">
-              <TrendingUp className="w-4 h-4" />
+              <Smartphone className="w-4 h-4" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl font-black font-mono text-zinc-950 dark:text-white tracking-tight">
-            {formatCurrency(metrics.totalRevenue)}
+            {formatCurrency(metrics.digitalReceived)}
           </p>
-          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-            <span>{metrics.totalShoots} Total Bookings</span>
-            <span className="text-ios-blue font-bold">Lifetime</span>
+          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-bold">
+            <span className="text-ios-blue">UPI + Bank IMPS</span>
+            <span>Total Collected: {formatCurrency(metrics.totalReceived)}</span>
           </div>
         </div>
 
-        {/* Total Collected (Cash & Digital) */}
-        <div className="p-4 sm:p-5 rounded-[24px] ios-glass-card space-y-2 relative overflow-hidden group border-emerald-200/80 dark:border-emerald-900/30">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Cash Inflow</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200/80 dark:border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-xl sm:text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
-            {formatCurrency(metrics.totalReceived)}
-          </p>
-          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-            <span className="text-emerald-700 dark:text-emerald-300 font-bold">
-              💵 Cash: {formatCurrency(metrics.cashReceived)}
-            </span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
-              {metrics.totalRevenue > 0 ? Math.round((metrics.totalReceived / metrics.totalRevenue) * 100) : 0}% Realized
-            </span>
-          </div>
-        </div>
-
-        {/* Outstanding Pending Balance */}
+        {/* PROMINENT CARD 3: ⏳ PENDING BALANCE RECEIVABLES */}
         <div className="p-4 sm:p-5 rounded-[24px] ios-glass-card space-y-2 relative overflow-hidden group border-rose-200/80 dark:border-rose-900/30">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Receivables</span>
+            <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-rose-500" />
+              <span>Receivables Due</span>
+            </span>
             <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-200/80 dark:border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400">
-              <Clock className="w-4 h-4" />
+              <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl font-black font-mono text-rose-600 dark:text-rose-400 tracking-tight">
             {formatCurrency(metrics.totalPending)}
           </p>
-          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-            <span>Pending Invoices</span>
-            <span className="text-rose-600 dark:text-rose-400 font-bold">Balance Due</span>
+          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-bold">
+            <span>Pending from Clients</span>
+            <span className="text-rose-600 dark:text-rose-400">To Collect</span>
           </div>
         </div>
 
-        {/* 30-Day Storage Holds */}
-        <div className="p-4 sm:p-5 rounded-[24px] ios-glass-card space-y-2 relative overflow-hidden group border-amber-200/80 dark:border-amber-900/30">
+        {/* PROMINENT CARD 4: 📈 GROSS BILLED REVENUE */}
+        <div className="p-4 sm:p-5 rounded-[24px] ios-glass-card space-y-2 relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Storage Holds</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-500/15 border border-amber-200/80 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
-              <Shield className="w-4 h-4" />
+            <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5 text-zinc-500" />
+              <span>Total Billed</span>
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/60 flex items-center justify-center text-zinc-700 dark:text-zinc-300">
+              <Calendar className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-xl sm:text-2xl font-black font-mono text-amber-600 dark:text-amber-300 tracking-tight">
-            {metrics.retentionActiveCount} <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Active</span>
+          <p className="text-xl sm:text-2xl font-black font-mono text-zinc-950 dark:text-white tracking-tight">
+            {formatCurrency(metrics.totalRevenue)}
           </p>
-          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-            <span>{metrics.clearedCount} Cleared</span>
-            <span className="text-amber-600 dark:text-amber-400 font-bold">{metrics.criticalClearanceCount} Expiring</span>
+          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-bold">
+            <span>{metrics.totalShoots} Total Shoots</span>
+            <span className="text-ios-blue">Gross Value</span>
           </div>
         </div>
       </div>
@@ -225,30 +233,33 @@ export const DashboardView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 space-y-0.5">
-            <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 uppercase block">💵 Cash in Hand</span>
-            <span className="text-base sm:text-lg font-black font-mono text-emerald-800 dark:text-emerald-200">
+          <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-700/60 space-y-1 shadow-2xs">
+            <span className="text-[11px] font-black text-emerald-800 dark:text-emerald-300 uppercase flex items-center gap-1">
+              <Banknote className="w-3.5 h-3.5" />
+              <span>💵 Cash in Hand</span>
+            </span>
+            <span className="text-lg sm:text-xl font-black font-mono text-emerald-800 dark:text-emerald-200 block">
               {formatCurrency(metrics.paymentMethodTotals['Cash'] || 0)}
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/40 space-y-0.5">
+          <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/40 space-y-1">
             <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-300 uppercase block">📱 UPI / GPay</span>
-            <span className="text-base sm:text-lg font-black font-mono text-blue-800 dark:text-blue-200">
+            <span className="text-base sm:text-lg font-black font-mono text-blue-800 dark:text-blue-200 block">
               {formatCurrency(metrics.paymentMethodTotals['UPI'] || 0)}
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/40 space-y-0.5">
+          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/40 space-y-1">
             <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase block">🏦 Bank IMPS</span>
-            <span className="text-base sm:text-lg font-black font-mono text-indigo-800 dark:text-indigo-200">
+            <span className="text-base sm:text-lg font-black font-mono text-indigo-800 dark:text-indigo-200 block">
               {formatCurrency(metrics.paymentMethodTotals['Bank Transfer'] || 0)}
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/40 space-y-0.5">
+          <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/40 space-y-1">
             <span className="text-[10px] font-extrabold text-purple-700 dark:text-purple-300 uppercase block">💳 Card & Other</span>
-            <span className="text-base sm:text-lg font-black font-mono text-purple-800 dark:text-purple-200">
+            <span className="text-base sm:text-lg font-black font-mono text-purple-800 dark:text-purple-200 block">
               {formatCurrency((metrics.paymentMethodTotals['Card'] || 0) + (metrics.paymentMethodTotals['Cheque'] || 0) + (metrics.paymentMethodTotals['Other'] || 0))}
             </span>
           </div>
