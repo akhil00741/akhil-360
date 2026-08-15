@@ -248,6 +248,30 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
+      {/* Empty State Banner if 0 shoots */}
+      {shoots.length === 0 && (
+        <div className="p-8 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-center space-y-4 shadow-sm">
+          <div className="w-14 h-14 rounded-3xl bg-blue-50 dark:bg-ios-blue/20 border border-blue-200 dark:border-ios-blue/30 flex items-center justify-center mx-auto text-ios-blue">
+            <Sparkles className="w-7 h-7" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1.5">
+            <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white">
+              Welcome to AKHIL 360 Studio!
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
+              Your clean production dashboard is ready. Tap <strong>Register Shoot</strong> to log your first client booking, time slots, advance payment, and wfolio gallery link.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-ios-blue hover:bg-blue-600 text-white text-xs font-bold shadow-glow-blue transition-all active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Register Your First Shoot</span>
+          </button>
+        </div>
+      )}
+
       {/* Two Column Section: Upcoming Shoots & Recent Deliveries */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         

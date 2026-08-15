@@ -3,7 +3,7 @@ import { Shoot, PaymentRecord, AppTheme, PaymentMethod } from '../types/shoot';
 import { INITIAL_SHOOTS } from '../data/sampleData';
 import { addDays, format } from 'date-fns';
 
-const STORAGE_KEY = 'akhil_360_shoots_v2';
+const STORAGE_KEY = 'akhil_360_shoots_prod_v1';
 const THEME_KEY = 'akhil_360_theme';
 
 interface ShootContextType {
