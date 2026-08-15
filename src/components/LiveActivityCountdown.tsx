@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shoot } from '../types/shoot';
 import { Clock, Navigation, MapPin, Sparkles, MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getWhatsAppLink } from '../utils/helpers';
+import { downloadAppleCalendar } from '../utils/calendarSync';
 
 interface LiveActivityCountdownProps {
   upcomingShoot: Shoot | null;
@@ -120,6 +121,16 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         </div>
 
         <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => downloadAppleCalendar([upcomingShoot], `${upcomingShoot.title.replace(/\s+/g, '_')}.ics`)}
+            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-zinc-700"
+            title="Sync this shoot to Apple Calendar with 4h and 2h alerts"
+          >
+            <Clock className="w-3 h-3 text-ios-blue" />
+            <span>🍎 Sync Apple Cal</span>
+          </button>
+
           <a
             href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(venue)}`}
             target="_blank"
