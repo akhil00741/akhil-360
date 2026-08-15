@@ -145,13 +145,13 @@ export const DashboardView: React.FC = () => {
                 <div className="flex items-center gap-2 pt-1">
                   {shoot.location && (
                     <a
-                      href={`http://maps.apple.com/?daddr=${encodeURIComponent(shoot.location)}`}
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(shoot.location)}`}
                       target="_blank"
                       rel="noreferrer"
                       className="flex-1 flex items-center justify-center space-x-1.5 py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-ios-blue border border-blue-200 text-xs font-bold transition-all active:scale-95"
                     >
                       <Navigation className="w-3.5 h-3.5" />
-                      <span>Live Traffic & GPS</span>
+                      <span>Google Maps Traffic</span>
                     </a>
                   )}
 
