@@ -93,7 +93,8 @@ const checks = [
     name: 'production build does not expose demo reset or seeded test records',
     pass:
       !/Reset Demo Data|sample demo data|resetToSampleData|INITIAL_SHOOTS|Shivaansh|Live Studio|Test Shoot/.test(`${componentText}\n${shootContext}`) &&
-      /akhil_360_shoots_prod_v2/.test(shootContext),
+      /STORAGE_SCOPE/.test(shootContext) &&
+      /akhil_360_shoots_\$\{STORAGE_SCOPE\}_v1/.test(shootContext),
   },
   {
     name: 'cloud sync uses environment variables without source-embedded Firebase keys',
@@ -107,9 +108,18 @@ const checks = [
     pass:
       /shootsById/.test(cloudSync) &&
       /deletedIdsById/.test(cloudSync) &&
+      /shoots: cleanShoots/.test(cloudSync) &&
+      /deletedIds: cleanDeletedIds/.test(cloudSync) &&
       /update\(ref\(db, DB_PATH\), updates\)/.test(cloudSync) &&
       !/set\(ref\(db, DB_PATH\)/.test(cloudSync) &&
-      /production_v1/.test(cloudSync),
+      /akhil360\/studio/.test(cloudSync),
+  },
+  {
+    name: 'local cache keys are scoped to the active Firebase path',
+    pass:
+      /cloudDatabasePath/.test(shootContext) &&
+      /STORAGE_SCOPE/.test(shootContext) &&
+      /akhil_360_deleted_ids_\$\{STORAGE_SCOPE\}_v1/.test(shootContext),
   },
   {
     name: 'cloud merge republishes newer local records for existing local users',
@@ -118,12 +128,19 @@ const checks = [
       /saveCloudDatabase\(merged, Array\.from\(combinedDeleted\)\)/.test(shootContext),
   },
   {
+    name: 'cloud sync has a quiet polling fallback for browsers with stalled realtime listeners',
+    pass:
+      /pullCloudUpdate/.test(shootContext) &&
+      /setInterval\(\(\) => \{\s*pullCloudUpdate\(false\);/s.test(shootContext) &&
+      /15_000/.test(shootContext),
+  },
+  {
     name: 'GitHub Pages production build enables Firebase cloud sync',
     pass:
       /VITE_ENABLE_CLOUD_SYNC:\s*"true"/.test(deployWorkflow) &&
       /VITE_FIREBASE_DATABASE_URL/.test(deployWorkflow) &&
       /akhil-360-default-rtdb\.firebaseio\.com/.test(deployWorkflow) &&
-      /VITE_FIREBASE_DB_PATH:\s*"akhil360\/production_v1"/.test(deployWorkflow),
+      /VITE_FIREBASE_DB_PATH:\s*"akhil360\/studio"/.test(deployWorkflow),
   },
   {
     name: 'contacts auto-save from shoots and are reachable from navigation',

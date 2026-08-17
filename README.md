@@ -19,7 +19,7 @@ The app reads Firebase configuration from Vite environment variables. Local deve
 The GitHub Pages workflow builds with Firebase enabled at:
 
 ```text
-akhil360/production_v1
+akhil360/studio
 ```
 
 Firebase web configuration is public client configuration. For private production use, protect the database with Firebase Authentication and Realtime Database security rules before storing real client phone numbers, email addresses, or payment notes.

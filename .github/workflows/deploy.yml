@@ -36,7 +36,7 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: "794900112395"
           VITE_FIREBASE_APP_ID: "1:794900112395:web:37f2a9bc345a414c8d530e"
           VITE_FIREBASE_MEASUREMENT_ID: "G-E6QNN8GXP4"
-          VITE_FIREBASE_DB_PATH: "akhil360/production_v1"
+          VITE_FIREBASE_DB_PATH: "akhil360/studio"
 
       - name: Deploy to GitHub Pages (gh-pages branch)
         uses: peaceiris/actions-gh-pages@v3

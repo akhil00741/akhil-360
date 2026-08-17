@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ClientContact, Shoot, PaymentRecord, AppTheme, PaymentMethod, PaymentStatus } from '../types/shoot';
 import { addDays, format } from 'date-fns';
-import { fetchCloudDatabase, saveCloudDatabase, subscribeToCloudDatabase, CloudPayload, isCloudSyncConfigured } from '../utils/cloudSync';
+import { fetchCloudDatabase, saveCloudDatabase, subscribeToCloudDatabase, CloudPayload, cloudDatabasePath, isCloudSyncConfigured } from '../utils/cloudSync';
 import { ShootContext } from './ShootContextBase';
 import { normalizeOnlinePaymentMethod } from '../utils/paymentMethods';
 import { getAutomaticShootStatus } from '../utils/sessionTracking';
 import { sortContacts, upsertContactsFromShoots } from '../utils/contactBook';
 
-const STORAGE_KEY = 'akhil_360_shoots_prod_v2';
-const DELETED_KEY = 'akhil_360_deleted_ids_prod_v2';
-const CONTACTS_KEY = 'akhil_360_contacts_prod_v1';
+const STORAGE_SCOPE = cloudDatabasePath.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+const STORAGE_KEY = `akhil_360_shoots_${STORAGE_SCOPE}_v1`;
+const DELETED_KEY = `akhil_360_deleted_ids_${STORAGE_SCOPE}_v1`;
+const CONTACTS_KEY = `akhil_360_contacts_${STORAGE_SCOPE}_v1`;
 const THEME_KEY = 'akhil_360_theme';
 
 const loadStoredContacts = () => {
@@ -129,9 +130,8 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [persistContacts]);
 
-  // Sync to Cloud function with Shared Tombstone Protection
-  const triggerSync = useCallback(async () => {
-    setIsSyncing(true);
+  const pullCloudUpdate = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setIsSyncing(true);
     try {
       const cloudDb = await fetchCloudDatabase();
       if (cloudDb) {
@@ -140,9 +140,14 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.error('Sync failed:', e);
     } finally {
-      setIsSyncing(false);
+      if (showSpinner) setIsSyncing(false);
     }
   }, [applyCloudUpdate]);
+
+  // Sync to Cloud function with Shared Tombstone Protection
+  const triggerSync = useCallback(async () => {
+    await pullCloudUpdate(true);
+  }, [pullCloudUpdate]);
 
   // Subscribe to real-time Firebase updates
   useEffect(() => {
@@ -156,12 +161,17 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       triggerSync();
     };
 
+    const cloudPullInterval = window.setInterval(() => {
+      pullCloudUpdate(false);
+    }, 15_000);
+
     window.addEventListener('focus', handleFocus);
     return () => {
       unsubscribe();
+      window.clearInterval(cloudPullInterval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [triggerSync, applyCloudUpdate]);
+  }, [triggerSync, applyCloudUpdate, pullCloudUpdate]);
 
   const applyAutomaticStatuses = useCallback((sourceShoots: Shoot[], nowMs = Date.now()) => {
     let changed = false;

@@ -13,7 +13,9 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
 };
 
-const DB_PATH = import.meta.env.VITE_FIREBASE_DB_PATH || 'akhil360/production_v1';
+const DB_PATH = import.meta.env.VITE_FIREBASE_DB_PATH || 'akhil360/studio';
+
+export const cloudDatabasePath = DB_PATH;
 
 export const isCloudSyncConfigured =
   import.meta.env.VITE_ENABLE_CLOUD_SYNC !== 'false' &&
@@ -47,23 +49,33 @@ const parseCloudPayload = (value: unknown): CloudPayload => {
     updatedAt?: string;
   } : {};
 
-  const shoots = data.shootsById && typeof data.shootsById === 'object'
+  const legacyShoots = Array.isArray(data.shoots)
+    ? data.shoots.filter((shoot): shoot is Shoot => Boolean(shoot?.id))
+    : [];
+  const keyedShoots = data.shootsById && typeof data.shootsById === 'object'
     ? Object.values(data.shootsById).filter((shoot): shoot is Shoot => Boolean(shoot?.id))
-    : Array.isArray(data.shoots)
-      ? data.shoots.filter((shoot): shoot is Shoot => Boolean(shoot?.id))
-      : [];
+    : [];
+  const shootMap = new Map<string, Shoot>();
 
-  const deletedIds = data.deletedIdsById && typeof data.deletedIdsById === 'object'
+  [...legacyShoots, ...keyedShoots].forEach((shoot) => {
+    const existing = shootMap.get(shoot.id);
+    if (!existing || new Date(shoot.updatedAt || 0) >= new Date(existing.updatedAt || 0)) {
+      shootMap.set(shoot.id, shoot);
+    }
+  });
+
+  const legacyDeletedIds = Array.isArray(data.deletedIds)
+    ? data.deletedIds.filter((id): id is string => typeof id === 'string')
+    : [];
+  const keyedDeletedIds = data.deletedIdsById && typeof data.deletedIdsById === 'object'
     ? Object.entries(data.deletedIdsById)
         .filter(([, isDeleted]) => Boolean(isDeleted))
         .map(([id]) => id)
-    : Array.isArray(data.deletedIds)
-      ? data.deletedIds.filter((id): id is string => typeof id === 'string')
-      : [];
+    : [];
 
   return {
-    shoots,
-    deletedIds,
+    shoots: Array.from(shootMap.values()),
+    deletedIds: Array.from(new Set([...legacyDeletedIds, ...keyedDeletedIds])),
     updatedAt: data.updatedAt || new Date().toISOString(),
   };
 };
@@ -92,16 +104,19 @@ export const saveCloudDatabase = async (shoots: Shoot[], deletedIds: string[]): 
 
   try {
     const updatedAt = new Date().toISOString();
-    const cleanShoots = shoots.filter(s => !deletedIds.includes(s.id));
-    const updates: Record<string, Shoot | string | boolean | null> = {
+    const cleanDeletedIds = Array.from(new Set(deletedIds));
+    const cleanShoots = shoots.filter(s => !cleanDeletedIds.includes(s.id));
+    const updates: Record<string, Shoot | Shoot[] | string | string[] | boolean | null> = {
       updatedAt,
+      shoots: cleanShoots,
+      deletedIds: cleanDeletedIds,
     };
 
     cleanShoots.forEach((shoot) => {
       updates[`shootsById/${shoot.id}`] = shoot;
     });
 
-    deletedIds.forEach((id) => {
+    cleanDeletedIds.forEach((id) => {
       updates[`deletedIdsById/${id}`] = true;
       updates[`shootsById/${id}`] = null;
     });
