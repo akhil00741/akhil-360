@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useShoots } from '../context/ShootContext';
+import { useShoots } from '../context/useShoots';
 import { X, Calendar, Copy, Check, Smartphone, ShieldCheck, Sparkles, Download } from 'lucide-react';
 import { generateICalendar } from '../utils/calendarSync';
 

@@ -1,67 +1,29 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Shoot, PaymentRecord, AppTheme, PaymentMethod, PaymentStatus } from '../types/shoot';
-import { INITIAL_SHOOTS } from '../data/sampleData';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ClientContact, Shoot, PaymentRecord, AppTheme, PaymentMethod, PaymentStatus } from '../types/shoot';
 import { addDays, format } from 'date-fns';
-import { fetchCloudDatabase, saveCloudDatabase, subscribeToCloudDatabase, CloudPayload } from '../utils/cloudSync';
+import { fetchCloudDatabase, saveCloudDatabase, subscribeToCloudDatabase, CloudPayload, isCloudSyncConfigured } from '../utils/cloudSync';
+import { ShootContext } from './ShootContextBase';
+import { normalizeOnlinePaymentMethod } from '../utils/paymentMethods';
+import { getAutomaticShootStatus } from '../utils/sessionTracking';
+import { sortContacts, upsertContactsFromShoots } from '../utils/contactBook';
 
-const STORAGE_KEY = 'akhil_360_shoots_prod_v1';
-const DELETED_KEY = 'akhil_360_deleted_ids_v1';
+const STORAGE_KEY = 'akhil_360_shoots_prod_v2';
+const DELETED_KEY = 'akhil_360_deleted_ids_prod_v2';
+const CONTACTS_KEY = 'akhil_360_contacts_prod_v1';
 const THEME_KEY = 'akhil_360_theme';
 
-interface ShootContextType {
-  shoots: Shoot[];
-  addShoot: (shoot: Omit<Shoot, 'id' | 'createdAt' | 'updatedAt' | 'balanceAmount'>) => Shoot;
-  updateShoot: (id: string, updates: Partial<Shoot>) => void;
-  deleteShoot: (id: string) => Promise<void>;
-  markAsDelivered: (id: string, deliveredAtDate?: string, wfolioUrl?: string) => void;
-  markDataCleared: (id: string, notes?: string) => void;
-  addPayment: (shootId: string, payment: Omit<PaymentRecord, 'id'>) => void;
-  getShootById: (id: string) => Shoot | undefined;
-  importShoots: (newShoots: Partial<Shoot>[]) => void;
-  
-  // Cloud Real-Time Sync
-  isSyncing: boolean;
-  lastSyncedAt: Date | null;
-  triggerSync: () => Promise<void>;
+const loadStoredContacts = () => {
+  try {
+    const saved = localStorage.getItem(CONTACTS_KEY);
+    if (saved) {
+      return sortContacts(JSON.parse(saved) as ClientContact[]);
+    }
+  } catch (e) {
+    console.error('Failed to parse contacts from local storage', e);
+  }
 
-  // Theme
-  theme: AppTheme;
-  toggleTheme: () => void;
-
-  // Metrics & Stats
-  metrics: {
-    totalShoots: number;
-    totalRevenue: number;
-    totalReceived: number;
-    totalPending: number;
-    cashReceived: number;
-    digitalReceived: number;
-    deliveredCount: number;
-    inEditingCount: number;
-    upcomingCount: number;
-    clearedCount: number;
-    retentionActiveCount: number;
-    criticalClearanceCount: number;
-    ownShootsCount: number;
-    ownShootsRevenue: number;
-    thirdPartyCount: number;
-    thirdPartyRevenue: number;
-    paymentMethodTotals: Record<PaymentMethod, number>;
-  };
-
-  // UI state
-  activeTab: 'dashboard' | 'registry' | 'calendar' | 'storage' | 'analytics';
-  setActiveTab: (tab: 'dashboard' | 'registry' | 'calendar' | 'storage' | 'analytics') => void;
-  selectedShoot: Shoot | null;
-  setSelectedShoot: (shoot: Shoot | null) => void;
-  isCreateModalOpen: boolean;
-  setIsCreateModalOpen: (open: boolean) => void;
-  reminderModalShoot: Shoot | null;
-  setReminderModalShoot: (shoot: Shoot | null) => void;
-  resetToSampleData: () => void;
-}
-
-const ShootContext = createContext<ShootContextType | undefined>(undefined);
+  return [];
+};
 
 export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => {
@@ -70,7 +32,7 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (saved) {
         return new Set(JSON.parse(saved));
       }
-    } catch (e) {}
+    } catch {}
     return new Set<string>();
   });
   const deletedIdsRef = useRef<Set<string>>(deletedIds);
@@ -88,8 +50,10 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.error('Failed to parse shoots from local storage', e);
     }
-    return INITIAL_SHOOTS;
+    return [];
   });
+
+  const [contacts, setContacts] = useState<ClientContact[]>(loadStoredContacts);
 
   const [theme, setTheme] = useState<AppTheme>(() => {
     return (localStorage.getItem(THEME_KEY) as AppTheme) || 'light';
@@ -99,11 +63,23 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const shootsRef = useRef<Shoot[]>(shoots);
   shootsRef.current = shoots;
+  const contactsRef = useRef<ClientContact[]>(contacts);
+  contactsRef.current = contacts;
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'registry' | 'calendar' | 'storage' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'registry' | 'contacts' | 'calendar' | 'storage' | 'analytics'>('dashboard');
   const [selectedShoot, setSelectedShoot] = useState<Shoot | null>(null);
+  const selectedShootRef = useRef<Shoot | null>(selectedShoot);
+  selectedShootRef.current = selectedShoot;
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [reminderModalShoot, setReminderModalShoot] = useState<Shoot | null>(null);
+
+  const persistContacts = useCallback((nextContacts: ClientContact[]) => {
+    const cleanContacts = sortContacts(nextContacts);
+    contactsRef.current = cleanContacts;
+    setContacts(cleanContacts);
+    localStorage.setItem(CONTACTS_KEY, JSON.stringify(cleanContacts));
+    return cleanContacts;
+  }, []);
 
   const applyCloudUpdate = useCallback((cloudDb: CloudPayload) => {
     // 1. Merge Cloud Deleted IDs with Local Deleted IDs
@@ -115,13 +91,11 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 2. Filter out all deleted shoots from cloud list
     const cleanCloudShoots = (cloudDb.shoots || []).filter(s => !combinedDeleted.has(s.id));
     const localMap = new Map(shootsRef.current.filter(s => !combinedDeleted.has(s.id)).map(s => [s.id, s]));
-    let hasChanges = false;
 
     cleanCloudShoots.forEach(cloudShoot => {
       const localShoot = localMap.get(cloudShoot.id);
       if (!localShoot || (new Date(cloudShoot.updatedAt || 0) > new Date(localShoot.updatedAt || 0))) {
         localMap.set(cloudShoot.id, cloudShoot);
-        hasChanges = true;
       }
     });
 
@@ -129,15 +103,15 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localMap.forEach((shoot, id) => {
       if (combinedDeleted.has(id)) {
         localMap.delete(id);
-        hasChanges = true;
       }
     });
 
     const merged = Array.from(localMap.values()).filter(s => !combinedDeleted.has(s.id));
     setShoots(merged);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    persistContacts(upsertContactsFromShoots(contactsRef.current, merged));
     setLastSyncedAt(new Date());
-  }, []);
+  }, [persistContacts]);
 
   // Sync to Cloud function with Shared Tombstone Protection
   const triggerSync = useCallback(async () => {
@@ -173,15 +147,66 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [triggerSync, applyCloudUpdate]);
 
+  const applyAutomaticStatuses = useCallback((sourceShoots: Shoot[], nowMs = Date.now()) => {
+    let changed = false;
+    const syncedShoots = sourceShoots.map((shoot) => {
+      const nextStatus = getAutomaticShootStatus(shoot, nowMs);
+
+      if (nextStatus === shoot.status) {
+        return shoot;
+      }
+
+      changed = true;
+      return {
+        ...shoot,
+        status: nextStatus,
+        updatedAt: new Date(nowMs).toISOString(),
+      };
+    });
+
+    return { shoots: syncedShoots, changed };
+  }, []);
+
   // Persist to local storage and sync to cloud
-  const persistShoots = (newShoots: Shoot[]) => {
-    const cleanShoots = newShoots.filter(s => !deletedIdsRef.current.has(s.id));
+  const persistShoots = useCallback((newShoots: Shoot[]) => {
+    const { shoots: autoSyncedShoots } = applyAutomaticStatuses(newShoots);
+    const cleanShoots = autoSyncedShoots.filter(s => !deletedIdsRef.current.has(s.id));
+    const cleanContacts = upsertContactsFromShoots(contactsRef.current, cleanShoots);
     setShoots(cleanShoots);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanShoots));
+    persistContacts(cleanContacts);
     saveCloudDatabase(cleanShoots, Array.from(deletedIdsRef.current)).then(() => {
       setLastSyncedAt(new Date());
     });
-  };
+    return cleanShoots;
+  }, [applyAutomaticStatuses, persistContacts]);
+
+  const syncAutomaticStatuses = useCallback(() => {
+    const { shoots: autoSyncedShoots, changed } = applyAutomaticStatuses(
+      shootsRef.current.filter(s => !deletedIdsRef.current.has(s.id)),
+    );
+
+    if (!changed) return;
+
+    persistShoots(autoSyncedShoots);
+
+    const currentSelectedShoot = selectedShootRef.current;
+    if (currentSelectedShoot) {
+      setSelectedShoot(autoSyncedShoots.find((s) => s.id === currentSelectedShoot.id) || null);
+    }
+  }, [applyAutomaticStatuses, persistShoots]);
+
+  useEffect(() => {
+    syncAutomaticStatuses();
+
+    const interval = window.setInterval(syncAutomaticStatuses, 60_000);
+    window.addEventListener('focus', syncAutomaticStatuses);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', syncAutomaticStatuses);
+    };
+  }, [syncAutomaticStatuses]);
 
   const toggleTheme = () => {
     const nextTheme: AppTheme = 'light';
@@ -200,8 +225,11 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       paymentStatus = 'partial';
     }
 
+    const primaryPaymentMethod = normalizeOnlinePaymentMethod(shootData.primaryPaymentMethod);
+
     const newShoot: Shoot = {
       ...shootData,
+      primaryPaymentMethod,
       id: `shoot-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       balanceAmount,
       paymentStatus,
@@ -225,8 +253,8 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           id: `pay-${Date.now()}`,
           amount: shootData.advanceAmount,
           date: shootData.primaryDate,
-          method: 'Cash',
-          notes: 'Initial Advance Deposit',
+          method: primaryPaymentMethod,
+          notes: 'Initial online advance deposit',
         }
       ] : [],
     };
@@ -263,10 +291,10 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return s;
     });
 
-    persistShoots(updatedShoots);
+    const persistedShoots = persistShoots(updatedShoots);
 
     if (selectedShoot && selectedShoot.id === id) {
-      setSelectedShoot(updatedShoots.find((s) => s.id === id) || null);
+      setSelectedShoot(persistedShoots.find((s) => s.id === id) || null);
     }
   };
 
@@ -311,7 +339,7 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
   };
 
-  const markDataCleared = (id: string, notes?: string) => {
+  const markDataCleared = (id: string, _notes?: string) => {
     const shoot = shoots.find(s => s.id === id);
     const existingNotes = shoot?.notes ? `${shoot.notes}\n` : '';
     const clearNote = `[DATA CLEARED on ${format(new Date(), 'dd MMM yyyy')}] Raw files purged from storage drive.`;
@@ -329,6 +357,7 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const newPaymentRecord: PaymentRecord = {
       ...payment,
+      method: normalizeOnlinePaymentMethod(payment.method),
       id: `pay-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     };
 
@@ -368,7 +397,11 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       bookedAt: s.bookedAt || now,
       retentionDaysLimit: s.retentionDaysLimit || 30,
       events: s.events || [],
-      payments: s.payments || [],
+      primaryPaymentMethod: normalizeOnlinePaymentMethod(s.primaryPaymentMethod),
+      payments: (s.payments || []).map((payment) => ({
+        ...payment,
+        method: normalizeOnlinePaymentMethod(payment.method),
+      })),
       wfolioUrl: s.wfolioUrl || '',
       wfolioPassword: s.wfolioPassword || '',
       wfolioStatus: s.wfolioStatus || 'none',
@@ -386,8 +419,31 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     persistShoots(merged);
   };
 
-  const resetToSampleData = () => {
-    persistShoots(INITIAL_SHOOTS);
+  const clearAllData = async () => {
+    const nextDeleted = new Set([
+      ...Array.from(deletedIdsRef.current),
+      ...shootsRef.current.map((shoot) => shoot.id),
+    ]);
+
+    setDeletedIds(nextDeleted);
+    deletedIdsRef.current = nextDeleted;
+    localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(nextDeleted)));
+
+    setShoots([]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    persistContacts([]);
+
+    if (selectedShootRef.current) {
+      setSelectedShoot(null);
+    }
+
+    setIsSyncing(true);
+    try {
+      await saveCloudDatabase([], Array.from(nextDeleted));
+      setLastSyncedAt(new Date());
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Metrics Calculations
@@ -395,7 +451,6 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const totalShoots = shoots.length;
     let totalRevenue = 0;
     let totalReceived = 0;
-    let cashReceived = 0;
     let digitalReceived = 0;
     let deliveredCount = 0;
     let inEditingCount = 0;
@@ -425,17 +480,14 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (shoot.payments && shoot.payments.length > 0) {
         shoot.payments.forEach(p => {
-          const method = p.method || 'Cash';
+          const method = normalizeOnlinePaymentMethod(p.method);
           paymentMethodTotals[method] = (paymentMethodTotals[method] || 0) + p.amount;
-          if (method === 'Cash') {
-            cashReceived += p.amount;
-          } else {
-            digitalReceived += p.amount;
-          }
+          digitalReceived += p.amount;
         });
       } else if (shoot.advanceAmount > 0) {
-        cashReceived += shoot.advanceAmount;
-        paymentMethodTotals['Cash'] += shoot.advanceAmount;
+        const method = normalizeOnlinePaymentMethod(shoot.primaryPaymentMethod);
+        digitalReceived += shoot.advanceAmount;
+        paymentMethodTotals[method] += shoot.advanceAmount;
       }
 
       if (shoot.status === 'delivered') deliveredCount++;
@@ -471,7 +523,6 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       totalRevenue,
       totalReceived,
       totalPending,
-      cashReceived,
       digitalReceived,
       deliveredCount,
       inEditingCount,
@@ -491,6 +542,7 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ShootContext.Provider
       value={{
         shoots,
+        contacts,
         addShoot,
         updateShoot,
         deleteShoot,
@@ -499,7 +551,9 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addPayment,
         getShootById,
         importShoots,
+        clearAllData,
         isSyncing,
+        isCloudEnabled: isCloudSyncConfigured,
         lastSyncedAt,
         triggerSync,
         theme,
@@ -513,18 +567,9 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsCreateModalOpen,
         reminderModalShoot,
         setReminderModalShoot,
-        resetToSampleData,
       }}
     >
       {children}
     </ShootContext.Provider>
   );
-};
-
-export const useShoots = () => {
-  const context = useContext(ShootContext);
-  if (!context) {
-    throw new Error('useShoots must be used within a ShootProvider');
-  }
-  return context;
 };

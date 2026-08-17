@@ -1,15 +1,14 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useShoots } from '../context/ShootContext';
-import { 
-  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, 
-  eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isToday 
+import { useShoots } from '../context/useShoots';
+import {
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+  eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday
 } from 'date-fns';
-import { 
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, 
-  MapPin, IndianRupee, Plus, User, Building, ExternalLink, 
-  Download, Upload, CheckCircle2 
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock,
+  MapPin, Plus, Upload, CheckCircle2
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '../utils/helpers';
+import { formatCurrency } from '../utils/helpers';
 import { Shoot } from '../types/shoot';
 import { downloadAppleCalendar, parseAppleCalendarICS } from '../utils/calendarSync';
 
@@ -59,7 +58,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onOpenAppleSync }) =
   }, [shoots]);
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-  const shootsForSelectedDate = shootsByDate.get(selectedDateStr) || [];
+  const shootsForSelectedDate = useMemo(
+    () => shootsByDate.get(selectedDateStr) || [],
+    [shootsByDate, selectedDateStr]
+  );
 
   // Calculate day total allocated income
   const selectedDayTotalIncome = useMemo(() => {

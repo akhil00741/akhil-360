@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useShoots } from '../context/ShootContext';
-import { 
-  Shield, Hourglass, CheckCircle2, 
-  Trash2, HardDrive, MessageSquare, 
-  Clock, Sparkles, ChevronRight, AlertCircle 
+import { useShoots } from '../context/useShoots';
+import {
+  Hourglass, CheckCircle2, HardDrive, MessageSquare
 } from 'lucide-react';
-import { formatCurrency, formatDate, calculateRetentionStatus } from '../utils/helpers';
+import { formatDate, calculateRetentionStatus } from '../utils/helpers';
 import { WfolioBadge } from './WfolioBadge';
 import { Shoot } from '../types/shoot';
 
@@ -91,7 +89,7 @@ export const DataRetentionView: React.FC = () => {
         {[
           { id: 'active', label: 'Active Holds', count: activeHoldCount },
           { id: 'critical', label: '⚠️ Urgent (&lt;7d)', count: criticalCount },
-          { id: 'cleared', label: '✅ Cleared / Wiped', count: clearedCount },
+          { id: 'cleared', label: 'Cleared / Wiped', count: clearedCount },
           { id: 'all', label: 'All Delivered', count: deliveredShoots.length },
         ].map(tab => (
           <button

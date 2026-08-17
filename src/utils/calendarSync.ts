@@ -1,4 +1,4 @@
-import { Shoot, ShootEventSlot } from '../types/shoot';
+import { Shoot } from '../types/shoot';
 
 // Helper to format date to iCal Local Time (YYYYMMDDTHHmmss) without UTC offset shifting
 const formatToICalDate = (dateStr: string, timeStr = '09:00'): string => {
@@ -15,7 +15,7 @@ const formatToICalDate = (dateStr: string, timeStr = '09:00'): string => {
   return `${y}${m}${d}T${hh}${mm}00`;
 };
 
-// Generate iCal string with accurate local time and 4-Hour / 2-Hour Alarms
+// Generate iCal string with accurate local time and practical preparation alarms.
 export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Photography Shoots'): string => {
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -45,17 +45,17 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
         lines.push(`LOCATION:${evt.venue || shoot.location || 'Studio'}`);
         lines.push('STATUS:CONFIRMED');
 
-        // 4-Hour Early Traffic & Preparation Alarm for iPhone
+        // 4-Hour Early Preparation Alarm for iPhone
         lines.push('BEGIN:VALARM');
         lines.push('ACTION:DISPLAY');
-        lines.push(`DESCRIPTION:🚦 AKHIL 360 (4-Hour Alert): Prepare camera gear and check live traffic for ${shoot.title} at ${evt.venue || shoot.location}`);
+        lines.push(`DESCRIPTION:AKHIL 360 (4-Hour Alert): Prepare camera gear, batteries, cards, and route for ${shoot.title} at ${evt.venue || shoot.location}`);
         lines.push('TRIGGER:-PT4H');
         lines.push('END:VALARM');
 
-        // 2-Hour "Beat the Traffic" Departure Alarm
+        // 2-Hour Departure Reminder
         lines.push('BEGIN:VALARM');
         lines.push('ACTION:DISPLAY');
-        lines.push(`DESCRIPTION:🚗 AKHIL 360 (2-Hour Alert): Time to start driving to beat the traffic for ${shoot.title}!`);
+        lines.push(`DESCRIPTION:AKHIL 360 (2-Hour Alert): Confirm travel time and leave for ${shoot.title} if needed.`);
         lines.push('TRIGGER:-PT2H');
         lines.push('END:VALARM');
 
@@ -90,10 +90,10 @@ export const generateICalendar = (shoots: Shoot[], calendarTitle = 'AKHIL 360 Ph
       lines.push(`LOCATION:${shoot.location || 'Studio'}`);
       lines.push('STATUS:CONFIRMED');
 
-      // 4-Hour Alarm
+      // 4-Hour Preparation Alarm
       lines.push('BEGIN:VALARM');
       lines.push('ACTION:DISPLAY');
-      lines.push(`DESCRIPTION:🚦 AKHIL 360 (4-Hour Alert): 4 hours until ${shoot.title}. Check traffic to ${shoot.location}.`);
+      lines.push(`DESCRIPTION:AKHIL 360 (4-Hour Alert): 4 hours until ${shoot.title}. Prepare gear and confirm the route to ${shoot.location}.`);
       lines.push('TRIGGER:-PT4H');
       lines.push('END:VALARM');
 

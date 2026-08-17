@@ -1,14 +1,15 @@
 import React from 'react';
-import { useShoots } from '../context/ShootContext';
-import { LayoutDashboard, FolderKanban, CalendarDays, Hourglass, BarChart3 } from 'lucide-react';
+import { useShoots } from '../context/useShoots';
+import { LayoutDashboard, FolderKanban, CalendarDays, Hourglass, BarChart3, UserRound } from 'lucide-react';
 import { ViewTab } from '../types/shoot';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, metrics } = useShoots();
+  const { activeTab, setActiveTab, metrics, contacts } = useShoots();
 
   const tabs: { id: ViewTab; label: string; icon: React.FC<{ className?: string }>; badge?: number }[] = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'registry', label: 'Shoots', icon: FolderKanban, badge: metrics.upcomingCount },
+    { id: 'contacts', label: 'Contacts', icon: UserRound, badge: contacts.length },
     { id: 'calendar', label: 'Schedule', icon: CalendarDays },
     { id: 'storage', label: '30d Purge', icon: Hourglass, badge: metrics.criticalClearanceCount },
     { id: 'analytics', label: 'Revenue', icon: BarChart3 },
@@ -16,7 +17,7 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-zinc-200/90 safe-bottom">
-      <div className="max-w-md mx-auto flex items-center justify-around px-2 py-2">
+      <div className="max-w-xl mx-auto flex items-center justify-around px-2 py-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

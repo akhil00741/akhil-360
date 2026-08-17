@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ShootProvider, useShoots } from './context/ShootContext';
+import { ShootProvider } from './context/ShootContext';
+import { useShoots } from './context/useShoots';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { DashboardView } from './components/DashboardView';
 import { ShootRegistryView } from './components/ShootRegistryView';
+import { ContactsView } from './components/ContactsView';
 import { CalendarView } from './components/CalendarView';
 import { DataRetentionView } from './components/DataRetentionView';
 import { AnalyticsView } from './components/AnalyticsView';
@@ -39,7 +41,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F6F9] text-[#111827] selection:bg-ios-blue selection:text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FFFCF8] text-[#1F1A17] selection:bg-ios-blue selection:text-white flex flex-col font-sans">
       {/* Top Navigation Header */}
       <Header onOpenAppleSync={() => setIsAppleCalendarModalOpen(true)} />
 
@@ -47,6 +49,7 @@ const MainApp: React.FC = () => {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 pt-4 sm:px-6 sm:pt-6">
         {activeTab === 'dashboard' && <DashboardView />}
         {activeTab === 'registry' && <ShootRegistryView />}
+        {activeTab === 'contacts' && <ContactsView />}
         {activeTab === 'calendar' && <CalendarView onOpenAppleSync={() => setIsAppleCalendarModalOpen(true)} />}
         {activeTab === 'storage' && <DataRetentionView />}
         {activeTab === 'analytics' && <AnalyticsView />}

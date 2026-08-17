@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Shoot, ReminderTemplate } from '../types/shoot';
+import { Shoot } from '../types/shoot';
 import { REMINDER_TEMPLATES, getWhatsAppLink } from '../utils/helpers';
-import { X, Send, Copy, Check, MessageSquare, Phone, Sparkles } from 'lucide-react';
+import { X, Send, Copy, Check, MessageSquare, Sparkles } from 'lucide-react';
 
 interface ReminderTemplateModalProps {
   shoot: Shoot | null;

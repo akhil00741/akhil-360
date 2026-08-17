@@ -1,47 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { Shoot } from '../types/shoot';
-import { Clock, Navigation, MapPin, Sparkles, MessageSquare, AlertCircle, CheckCircle2, Bell, Camera, Car } from 'lucide-react';
-import { getWhatsAppLink } from '../utils/helpers';
-import { downloadAppleCalendar } from '../utils/calendarSync';
+import { Shoot, ShootEventSlot } from '../types/shoot';
+import { Navigation, Camera, Car } from 'lucide-react';
 import { LiveActivity } from '../utils/liveActivityPlugin';
+import { getSessionTrackerState, SessionPhase } from '../utils/sessionTracking';
 
 let liveActivityId: string | null = null;
 
 interface LiveActivityCountdownProps {
   upcomingShoot: Shoot | null;
+  upcomingEvent?: ShootEventSlot | null;
   onOpenShoot: (shoot: Shoot) => void;
 }
 
-export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ upcomingShoot, onOpenShoot }) => {
-  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number; totalMinutes: number; isPast: boolean } | null>(null);
-  const [notifSent, setNotifSent] = useState(false);
+interface LiveActivityTimeState {
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalMinutes: number;
+  phase: SessionPhase;
+  statusLabel: string;
+  progressPercent: number;
+}
+
+export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ upcomingShoot, upcomingEvent, onOpenShoot }) => {
+  const [timeLeft, setTimeLeft] = useState<LiveActivityTimeState | null>(null);
 
   useEffect(() => {
     if (!upcomingShoot) return;
 
     const calculateTime = () => {
-      const shootDateStr = upcomingShoot.events?.[0]?.date || upcomingShoot.primaryDate;
-      const startTimeStr = upcomingShoot.events?.[0]?.startTime || '09:00';
-      
-      const targetTime = new Date(`${shootDateStr}T${startTimeStr}:00`).getTime();
+      const eventSlot = upcomingEvent || upcomingShoot.events?.[0] || {
+        id: `${upcomingShoot.id}-primary`,
+        name: 'Main Shoot Session',
+        date: upcomingShoot.primaryDate,
+        startTime: '09:00',
+        endTime: '17:00',
+        venue: upcomingShoot.location || 'Studio',
+        allocatedIncome: upcomingShoot.totalAmount,
+      };
       const now = Date.now();
-      const diff = targetTime - now;
+      const tracker = getSessionTrackerState(eventSlot, now);
+      const targetTime = tracker.phase === 'upcoming' ? tracker.startsAt : tracker.endsAt;
+      const diff = Math.max(0, targetTime - now);
 
-      if (diff <= 0) {
-        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, totalMinutes: 0, isPast: true });
-        return;
-      }
-
-      const totalMinutes = Math.floor(diff / (1000 * 60));
+      const totalMinutes = Math.ceil(diff / (1000 * 60));
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      const prepProgressPercent = Math.min(100, Math.max(10, 100 - (totalMinutes / 360) * 100));
+      const progressPercent = tracker.phase === 'upcoming' ? prepProgressPercent : tracker.progressPercent;
 
-      setTimeLeft({ hours, minutes, seconds, totalMinutes, isPast: false });
+      setTimeLeft({
+        hours,
+        minutes,
+        seconds,
+        totalMinutes,
+        phase: tracker.phase,
+        statusLabel: tracker.statusLabel,
+        progressPercent,
+      });
       
       // Update Native iOS Live Activity
-      const venue = upcomingShoot.events?.[0]?.venue || upcomingShoot.location || 'Studio';
-      const progressPercent = Math.min(100, Math.max(10, 100 - (totalMinutes / 360) * 100));
+      const venue = eventSlot?.venue || upcomingShoot.location || 'Studio';
       
       try {
         if (!liveActivityId) {
@@ -58,7 +78,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
             progress: progressPercent
           }).catch(() => {});
         }
-      } catch (e) {
+      } catch {
         // Plugin not running (i.e. web context)
       }
     };
@@ -72,68 +92,18 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
         liveActivityId = null;
       }
     };
-  }, [upcomingShoot]);
-
-  const handleTriggerImmediateNotification = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!upcomingShoot || !timeLeft) return;
-    const venue = upcomingShoot.events?.[0]?.venue || upcomingShoot.location || 'Main Venue';
-    const shootTime = upcomingShoot.events?.[0]?.startTime || '11:00';
-
-    const title = `⏰ ${timeLeft.totalMinutes} Minutes Left: ${upcomingShoot.title}`;
-    const body = `Starts at ${shootTime} (${timeLeft.hours > 0 ? `${timeLeft.hours}h ` : ''}${timeLeft.minutes}m remaining) at ${venue}. Check live traffic & beat the rush!`;
-
-    const sendNativeNotif = () => {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then((reg) => {
-          reg.showNotification(title, {
-            body: body,
-            icon: './apple-touch-icon.png',
-            badge: './favicon.png',
-            vibrate: [200, 100, 200],
-            tag: 'shoot-countdown',
-          } as NotificationOptions);
-        });
-      }
-
-      try {
-        new Notification(title, {
-          body: body,
-          icon: './apple-touch-icon.png',
-          badge: './favicon.png',
-        });
-      } catch (err) {}
-
-      setNotifSent(true);
-      setTimeout(() => setNotifSent(false), 3500);
-    };
-
-    if ('Notification' in window) {
-      if (Notification.permission === 'granted') {
-        sendNativeNotif();
-      } else {
-        Notification.requestPermission().then((permission) => {
-          if (permission === 'granted') {
-            sendNativeNotif();
-          } else {
-            alert('Please enable notifications in Safari Settings to receive lock screen alerts.');
-          }
-        });
-      }
-    } else {
-      alert('Use "Sync Apple Cal" button below to load alarms natively on your Lock Screen.');
-    }
-  };
+  }, [upcomingShoot, upcomingEvent]);
 
   if (!upcomingShoot || !timeLeft) return null;
 
-  const eventSlot = upcomingShoot.events?.[0];
+  const eventSlot = upcomingEvent || upcomingShoot.events?.[0];
   const venue = eventSlot?.venue || upcomingShoot.location || 'Studio';
   const shootTime = eventSlot?.startTime || '09:00';
-
-  // Calculate progress percentage (assume 6 hours window before shoot)
-  const totalWindowMinutes = 360;
-  const progressPercent = Math.min(100, Math.max(10, 100 - (timeLeft.totalMinutes / totalWindowMinutes) * 100));
+  const endTime = eventSlot?.endTime || 'TBD';
+  const countdownLabel = timeLeft.phase === 'upcoming' ? 'Starts In' : timeLeft.phase === 'live' ? 'Ends In' : 'Session Finished';
+  const reminderText = timeLeft.phase === 'live'
+    ? `${upcomingShoot.title} at ${venue} is live now and ends in ${timeLeft.totalMinutes} minutes.`
+    : `${upcomingShoot.title} at ${venue} starts in ${timeLeft.totalMinutes} minutes. Prepare camera gear and check route.`;
 
   return (
     <div className="space-y-3">
@@ -182,21 +152,23 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
             <div className="w-48 sm:w-60 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-emerald-400 rounded-full transition-all duration-1000"
-                style={{ width: `${progressPercent}%` }}
+                style={{ width: `${timeLeft.progressPercent}%` }}
               />
             </div>
 
             <span className="text-xs font-bold text-zinc-400 block pt-0.5">
-              {timeLeft.isPast ? 'Session in progress' : 'Time Remaining'}
+              {countdownLabel} • {timeLeft.statusLabel}
             </span>
           </div>
 
-          <div className="text-right space-y-0.5">
-            <span className="text-xs text-zinc-400 font-medium block">Starts</span>
-            <span className="text-lg sm:text-xl font-extrabold font-mono text-white block">
-              {shootTime}
-            </span>
-            <span className="text-[11px] text-zinc-500 font-medium block truncate max-w-[130px]">
+          <div className="text-right space-y-1">
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider block">Start - End</span>
+              <span className="text-base sm:text-lg font-extrabold font-mono text-white block">
+                {shootTime} <span className="text-zinc-500 font-medium mx-0.5">-</span> {endTime}
+              </span>
+            </div>
+            <span className="text-[11px] text-emerald-400 font-bold block truncate max-w-[130px] bg-emerald-400/10 px-2 py-0.5 rounded-md inline-block">
               {upcomingShoot.category}
             </span>
           </div>
@@ -210,51 +182,31 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
           </div>
 
           <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={handleTriggerImmediateNotification}
-              className="px-3 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 border border-amber-400/30 text-xs"
-              title="Test Instant Notification"
-            >
-              <Bell className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
-              <span>{notifSent ? '✅ Alert Fired!' : '🔔 Notify'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => downloadAppleCalendar([upcomingShoot], `${upcomingShoot.title.replace(/\s+/g, '_')}.ics`)}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 border border-white/15 text-xs"
-              title="Sync to Apple Calendar"
-            >
-              <Clock className="w-3 h-3 text-ios-blue" />
-              <span>🍎 Sync Apple Cal</span>
-            </button>
-
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(venue)}`}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold flex items-center gap-1 shadow-xs transition-transform active:scale-95 text-xs"
+              className="px-4 py-2 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 text-xs"
             >
-              <Navigation className="w-3 h-3" />
-              <span>Maps</span>
+              <Navigation className="w-3.5 h-3.5" />
+              <span>Get Directions</span>
             </a>
           </div>
         </div>
       </div>
 
-      {/* 🔔 ATTACHED LOCK SCREEN NOTIFICATION BANNER (MATCHING USER SCREENSHOT) */}
+      {/* Attached live notification banner */}
       <div className="p-4 rounded-2xl bg-blue-50/90 border border-blue-200/80 shadow-xs flex items-center space-x-3 text-zinc-900 animate-fade-in">
         <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-black shrink-0 shadow-xs">
           <Camera className="w-5 h-5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-zinc-900">Pre-Shoot Reminder</h4>
+            <h4 className="text-xs font-bold text-zinc-900">Session Live Tracker</h4>
             <span className="text-[10px] text-zinc-500 font-medium">Live</span>
           </div>
           <p className="text-xs text-zinc-700 font-medium mt-0.5 truncate">
-            {upcomingShoot.title} at {venue} starts in {timeLeft.totalMinutes} minutes. Prepare camera gear & check route!
+            {reminderText}
           </p>
         </div>
       </div>

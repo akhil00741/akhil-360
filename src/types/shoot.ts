@@ -17,6 +17,7 @@ export type ShootCategory =
   | 'Other';
 
 export type PaymentMethod = 
+  // Legacy imports/local records may still contain Cash. New UI paths are online-only.
   | 'Cash'
   | 'UPI'
   | 'Bank Transfer'
@@ -100,6 +101,20 @@ export interface Shoot {
   updatedAt: string;
 }
 
+export interface ClientContact {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  instagram?: string;
+  sourceShootIds: string[];
+  shootCount: number;
+  lastShootTitle?: string;
+  lastShootDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ReminderTemplate {
   id: string;
   title: string;
@@ -109,5 +124,5 @@ export interface ReminderTemplate {
   template: (shoot: Shoot) => string;
 }
 
-export type ViewTab = 'dashboard' | 'registry' | 'calendar' | 'storage' | 'analytics';
+export type ViewTab = 'dashboard' | 'registry' | 'contacts' | 'calendar' | 'storage' | 'analytics';
 export type AppTheme = 'light' | 'dark';

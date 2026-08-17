@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useShoots } from '../context/ShootContext';
+import { useShoots } from '../context/useShoots';
 import { Shoot, ShootCategory, ShootType, ShootStatus, ShootEventSlot, PaymentMethod } from '../types/shoot';
-import { X, Plus, Trash2, Calendar, Clock, IndianRupee, Globe, Shield, User, Building, MapPin, Camera, Banknote, Landmark, Smartphone, CreditCard, FileText, Mail } from 'lucide-react';
+import { X, Plus, Trash2, Clock, IndianRupee, Globe, User, Building, MapPin, Camera, Landmark, Smartphone, CreditCard, FileText, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '../utils/helpers';
+import { normalizeOnlinePaymentMethod } from '../utils/paymentMethods';
 
 interface ShootModalProps {
   shootToEdit?: Shoot | null;
@@ -26,12 +27,11 @@ const CATEGORIES: ShootCategory[] = [
 ];
 
 const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'Cash', label: '💵 Cash', icon: Banknote },
-  { id: 'UPI', label: '📱 UPI (GPay/PhonePe)', icon: Smartphone },
-  { id: 'Bank Transfer', label: '🏦 Bank IMPS/NEFT', icon: Landmark },
-  { id: 'Card', label: '💳 Card / POS', icon: CreditCard },
-  { id: 'Cheque', label: '📝 Cheque', icon: FileText },
-  { id: 'Other', label: '✨ Other', icon: Banknote },
+  { id: 'UPI', label: 'UPI (GPay / PhonePe)', icon: Smartphone },
+  { id: 'Bank Transfer', label: 'Bank IMPS / NEFT', icon: Landmark },
+  { id: 'Card', label: 'Card / POS', icon: CreditCard },
+  { id: 'Cheque', label: 'Cheque', icon: FileText },
+  { id: 'Other', label: 'Other Online', icon: CreditCard },
 ];
 
 export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) => {
@@ -58,13 +58,13 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
   // Financials & Payment Types (in Rupees)
   const [totalAmount, setTotalAmount] = useState<number>(shootToEdit?.totalAmount || 0);
   const [advanceAmount, setAdvanceAmount] = useState<number>(shootToEdit?.advanceAmount || 0);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(shootToEdit?.primaryPaymentMethod || 'Cash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(normalizeOnlinePaymentMethod(shootToEdit?.primaryPaymentMethod));
   
   // Workflow & Storage
   const [status, setStatus] = useState<ShootStatus>(shootToEdit?.status || 'booked');
-  const [deliveredAt, setDeliveredAt] = useState(shootToEdit?.deliveredAt || '');
+  const [deliveredAt] = useState(shootToEdit?.deliveredAt || '');
   const [storageDevice, setStorageDevice] = useState(shootToEdit?.storageDevice || 'SanDisk SSD-01');
-  const [rawFilesSizeGb, setRawFilesSizeGb] = useState<number>(shootToEdit?.rawFilesSizeGb || 100);
+  const [rawFilesSizeGb] = useState<number>(shootToEdit?.rawFilesSizeGb || 100);
 
   // wfolio
   const [wfolioUrl, setWfolioUrl] = useState(shootToEdit?.wfolioUrl || '');
@@ -379,9 +379,14 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
 
           {/* Section 2: Client Contact */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-              2. Client Contact
-            </h3>
+            <div>
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                2. Client Contact
+              </h3>
+              <p className="mt-1 text-[11px] font-medium text-zinc-500">
+                Saved to the in-app contact book automatically when this shoot is saved.
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -543,12 +548,12 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
             </div>
           </div>
 
-          {/* Section 4: Financials & Payment Types (Rupees ₹) */}
+          {/* Section 4: Financials & Online Payment Types (Rupees ₹) */}
           <div className="space-y-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-200">
             <div className="flex items-center space-x-2">
               <IndianRupee className="w-4 h-4 text-emerald-600" />
               <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
-                4. Financial Package & Payment Method (₹ Rupees)
+                4. Financial Package & Online Payment Method (₹ Rupees)
               </h3>
             </div>
 
@@ -570,7 +575,7 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-zinc-700 block mb-1">Advance Deposit Received (₹)</label>
+                <label className="text-xs font-semibold text-zinc-700 block mb-1">Online Advance Received (₹)</label>
                 <div className="relative">
                   <span className="text-zinc-500 font-bold absolute left-3.5 top-1/2 -translate-y-1/2 text-sm">₹</span>
                   <input
@@ -588,7 +593,7 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
 
             {/* Payment Method Selector */}
             <div>
-              <label className="text-xs font-semibold text-zinc-700 block mb-1.5">Primary Payment Mode</label>
+              <label className="text-xs font-semibold text-zinc-700 block mb-1.5">Primary Online Payment Mode</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {PAYMENT_METHODS.map((pm) => {
                   const Icon = pm.icon;
@@ -675,6 +680,9 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
                   <option value="delivered">Delivered (Starts 30-Day Hold)</option>
                   <option value="data_cleared">Data Cleared (Archive Purged)</option>
                 </select>
+                <p className="text-[11px] text-zinc-500 font-medium mt-1.5 leading-relaxed">
+                  Booked, In Progress, and Editing are auto-tracked from the session start/end times. Use Delivered or Data Cleared only after the real action is done.
+                </p>
               </div>
 
               <div>
@@ -713,7 +721,7 @@ export const ShootModal: React.FC<ShootModalProps> = ({ shootToEdit, onClose }) 
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-ios-blue hover:bg-blue-600 text-white text-xs font-bold shadow-glow-blue transition-all active:scale-95"
+              className="min-h-[44px] px-6 py-2.5 rounded-xl bg-[#B83A08] hover:bg-[#923006] text-white text-xs font-extrabold shadow-glow-blue ring-1 ring-[#923006]/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#B83A08]/35"
             >
               {shootToEdit ? 'Save Changes' : 'Register Shoot'}
             </button>

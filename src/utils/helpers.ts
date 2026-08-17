@@ -1,5 +1,5 @@
-import { format, parseISO, differenceInDays, isAfter, isBefore, addDays } from 'date-fns';
-import { Shoot, ShootStatus, ReminderTemplate } from '../types/shoot';
+import { format, parseISO, differenceInDays, addDays } from 'date-fns';
+import { Shoot, ReminderTemplate } from '../types/shoot';
 
 // Currency Formatter (INR with fallback)
 export const formatCurrency = (amount: number): string => {
@@ -16,7 +16,7 @@ export const formatDate = (dateString?: string, formatStr = 'dd MMM yyyy'): stri
   try {
     const date = parseISO(dateString);
     return format(date, formatStr);
-  } catch (e) {
+  } catch {
     return dateString;
   }
 };

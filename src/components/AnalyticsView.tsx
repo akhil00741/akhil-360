@@ -1,16 +1,17 @@
-import React, { useMemo } from 'react';
-import { useShoots } from '../context/ShootContext';
-import { 
-  BarChart3, TrendingUp, IndianRupee, PieChart, 
-  ArrowUpRight, Award, User, Building, RefreshCw, 
-  Download, CheckCircle2, Shield, Banknote, CreditCard, Landmark, Smartphone 
+import React, { useMemo, useState } from 'react';
+import { useShoots } from '../context/useShoots';
+import {
+  TrendingUp, IndianRupee, Award, User, Building, Trash2,
+  Download
 } from 'lucide-react';
 import { formatCurrency } from '../utils/helpers';
 import { ShootCategory, PaymentMethod } from '../types/shoot';
 import { format, subMonths, parseISO, isSameMonth } from 'date-fns';
+import { getPaymentMethodLabel } from '../utils/paymentMethods';
 
 export const AnalyticsView: React.FC = () => {
-  const { shoots, metrics, resetToSampleData } = useShoots();
+  const { shoots, contacts, metrics, clearAllData } = useShoots();
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   // Category Breakdown
   const categoryStats = useMemo(() => {
@@ -43,7 +44,7 @@ export const AnalyticsView: React.FC = () => {
           if (isSameMonth(shootDate, d)) {
             return acc + s.totalAmount;
           }
-        } catch (e) {}
+        } catch {}
         return acc;
       }, 0);
 
@@ -68,11 +69,12 @@ export const AnalyticsView: React.FC = () => {
     downloadAnchor.remove();
   };
 
-  const paymentMethodsList: { method: PaymentMethod; label: string; icon: any; color: string; bg: string }[] = [
-    { method: 'Cash', label: 'Cash in Hand', icon: Banknote, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500' },
-    { method: 'UPI', label: 'UPI (GPay / PhonePe)', icon: Smartphone, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500' },
-    { method: 'Bank Transfer', label: 'Bank IMPS / NEFT', icon: Landmark, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500' },
-    { method: 'Card', label: 'Card / POS', icon: CreditCard, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500' },
+  const paymentMethodsList: { method: PaymentMethod; label: string; bg: string }[] = [
+    { method: 'UPI', label: getPaymentMethodLabel('UPI'), bg: 'bg-blue-500' },
+    { method: 'Bank Transfer', label: getPaymentMethodLabel('Bank Transfer'), bg: 'bg-indigo-500' },
+    { method: 'Card', label: getPaymentMethodLabel('Card'), bg: 'bg-purple-500' },
+    { method: 'Cheque', label: getPaymentMethodLabel('Cheque'), bg: 'bg-amber-500' },
+    { method: 'Other', label: getPaymentMethodLabel('Other'), bg: 'bg-zinc-500' },
   ];
 
   return (
@@ -85,7 +87,7 @@ export const AnalyticsView: React.FC = () => {
             Revenue Analytics & Graphs
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Interactive financial charts, Cash vs. Bank inflow, and shoot category splits
+            Interactive financial charts, online payment channels, and shoot category splits
           </p>
         </div>
 
@@ -117,7 +119,7 @@ export const AnalyticsView: React.FC = () => {
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">Across {metrics.totalShoots} registered shoots</p>
         </div>
 
-        {/* Realized Cash Inflow */}
+        {/* Realized Online Inflow */}
         <div className="p-5 rounded-3xl ios-glass-card space-y-2 relative overflow-hidden border-emerald-200/80 dark:border-emerald-900/30">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-zinc-500">Collected Income (₹)</span>
@@ -203,13 +205,13 @@ export const AnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Visual Chart 2: Payment Methods Breakdown (Cash vs UPI vs Bank Transfer vs Card) */}
+      {/* Visual Chart 2: Online Payment Methods Breakdown */}
       <div className="p-5 sm:p-6 rounded-3xl ios-glass-card space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Payment Channels</span>
             <h3 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-white">
-              Cash vs. Digital & Bank Collection Distribution
+              Online Collection Distribution
             </h3>
           </div>
           <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
@@ -220,25 +222,26 @@ export const AnalyticsView: React.FC = () => {
         {/* Stacked Multi-Color Progress Bar */}
         <div className="space-y-2">
           <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden flex shadow-inner">
-            {paymentMethodsList.map(({ method, bg }) => {
+            {paymentMethodsList
+              .map(({ method, bg }) => {
               const amount = metrics.paymentMethodTotals[method] || 0;
               const percent = metrics.totalReceived > 0 ? (amount / metrics.totalReceived) * 100 : 0;
-              if (percent <= 0) return null;
-
-              return (
+              return { method, bg, amount, percent };
+            })
+              .filter(({ percent }) => percent > 0)
+              .map(({ method, bg, amount, percent }) => (
                 <div
-                  key={method}
+                  key={`payment-segment-${method}`}
                   className={`${bg} h-full transition-all duration-500 hover:brightness-110`}
                   style={{ width: `${percent}%` }}
                   title={`${method}: ${formatCurrency(amount)} (${percent.toFixed(1)}%)`}
                 />
-              );
-            })}
+              ))}
           </div>
 
           {/* Legend Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            {paymentMethodsList.map(({ method, label, icon: Icon, color, bg }) => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-2">
+            {paymentMethodsList.map(({ method, label, bg }) => {
               const amount = metrics.paymentMethodTotals[method] || 0;
               const percent = metrics.totalReceived > 0 ? Math.round((amount / metrics.totalReceived) * 100) : 0;
 
@@ -251,7 +254,7 @@ export const AnalyticsView: React.FC = () => {
                   <p className="text-base font-extrabold font-mono text-zinc-900 dark:text-white">
                     {formatCurrency(amount)}
                   </p>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">{percent}% of collected cash</p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">{percent}% of online collection</p>
                 </div>
               );
             })}
@@ -375,26 +378,61 @@ export const AnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Data Management & Demo Reset */}
+      {/* Data Management */}
       <div className="p-5 rounded-3xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-3 shadow-sm">
         <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Database Maintenance</h4>
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
-            All data is saved locally on your device in offline storage. You can reset to initial sample demo data or export backups.
+            Production data is saved locally on this device. Export a backup before clearing shoots and the in-app contact book.
           </p>
           <button
-            onClick={() => {
-              if (confirm('Reset all shoots back to sample demo data?')) {
-                resetToSampleData();
-              }
-            }}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition-colors shrink-0"
+            onClick={() => setIsClearConfirmOpen(true)}
+            disabled={shoots.length === 0 && contacts.length === 0}
+            className="flex min-h-11 items-center space-x-1.5 rounded-xl bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 shrink-0 border border-rose-200"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Reset Demo Data</span>
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear App Data</span>
           </button>
         </div>
       </div>
+
+      {isClearConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 backdrop-blur-xs sm:items-center">
+          <div className="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-zinc-950">Clear current app data?</h3>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-zinc-600">
+                  This clears {shoots.length} shoot{shoots.length === 1 ? '' : 's'} and {contacts.length} saved contact{contacts.length === 1 ? '' : 's'} from this app. Export a backup first if you need one.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setIsClearConfirmOpen(false)}
+                className="min-h-11 rounded-xl border border-zinc-200 bg-white px-4 text-xs font-bold text-zinc-700 transition-colors hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void clearAllData();
+                  setIsClearConfirmOpen(false);
+                }}
+                className="min-h-11 rounded-xl bg-rose-600 px-4 text-xs font-extrabold text-white transition-colors hover:bg-rose-500"
+              >
+                Clear Everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

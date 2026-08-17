@@ -1,15 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { useShoots } from '../context/ShootContext';
-import { 
-  Search, Plus, Calendar, MapPin, 
-  MessageSquare, Phone, ArrowUpDown, CheckCircle2, 
-  User, Building, Banknote, Trash2, AlertCircle 
+import { useShoots } from '../context/useShoots';
+import {
+  Search, Plus, Calendar, MapPin,
+  MessageSquare, ArrowUpDown, CheckCircle2,
+  User, Building, Trash2, AlertCircle
 } from 'lucide-react';
 import { formatCurrency, formatDate, calculateRetentionStatus } from '../utils/helpers';
 import { WfolioBadge } from './WfolioBadge';
 import { Shoot } from '../types/shoot';
+import { ContactQuickActions } from './ContactQuickActions';
 
-type FilterTab = 'all' | 'own' | 'third_party' | 'cash' | 'booked' | 'editing' | 'delivered' | 'data_cleared';
+type FilterTab = 'all' | 'own' | 'third_party' | 'booked' | 'editing' | 'delivered' | 'data_cleared';
 type SortField = 'date' | 'revenue' | 'balance' | 'title';
 
 export const ShootRegistryView: React.FC = () => {
@@ -27,7 +28,6 @@ export const ShootRegistryView: React.FC = () => {
       .filter((s) => {
         if (filterTab === 'own' && s.shootType !== 'own') return false;
         if (filterTab === 'third_party' && s.shootType !== 'third_party') return false;
-        if (filterTab === 'cash' && !s.payments?.some(p => p.method === 'Cash') && s.primaryPaymentMethod !== 'Cash') return false;
         if (filterTab === 'booked' && s.status !== 'booked') return false;
         if (filterTab === 'editing' && (s.status !== 'editing' && s.status !== 'in_progress')) return false;
         if (filterTab === 'delivered' && s.status !== 'delivered') return false;
@@ -63,7 +63,6 @@ export const ShootRegistryView: React.FC = () => {
     { id: 'all', label: 'All Shoots', count: shoots.length },
     { id: 'own', label: 'Own Shoots', count: shoots.filter(s => s.shootType === 'own').length },
     { id: 'third_party', label: '3rd Party Agency', count: shoots.filter(s => s.shootType === 'third_party').length },
-    { id: 'cash', label: '💵 Cash Paid', count: shoots.filter(s => s.payments?.some(p => p.method === 'Cash') || s.primaryPaymentMethod === 'Cash').length },
     { id: 'booked', label: 'Booked', count: shoots.filter(s => s.status === 'booked').length },
     { id: 'editing', label: 'In Progress / Editing', count: shoots.filter(s => s.status === 'editing' || s.status === 'in_progress').length },
     { id: 'delivered', label: 'Delivered (30d Hold)', count: shoots.filter(s => s.status === 'delivered').length },
@@ -87,13 +86,13 @@ export const ShootRegistryView: React.FC = () => {
             Shoot Registry
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            {filteredShoots.length} shoot{filteredShoots.length === 1 ? '' : 's'} found • Track cash, bank, dates & clients
+            {filteredShoots.length} shoot{filteredShoots.length === 1 ? '' : 's'} found • Track online payments, dates & clients
           </p>
         </div>
 
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center justify-center space-x-2 px-4 py-2.5 rounded-2xl bg-ios-blue hover:bg-blue-600 text-white text-xs sm:text-sm font-bold shadow-glow-blue transition-all active:scale-95"
+          className="min-h-[44px] flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-[#B83A08] hover:bg-[#923006] text-white text-xs sm:text-sm font-extrabold shadow-glow-blue ring-1 ring-[#923006]/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#B83A08]/35"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>New Shoot Entry</span>
@@ -175,7 +174,7 @@ export const ShootRegistryView: React.FC = () => {
           filteredShoots.map((shoot) => {
             const retention = calculateRetentionStatus(shoot);
             const isFullyPaid = shoot.balanceAmount === 0;
-            const hasCashPayment = shoot.payments?.some(p => p.method === 'Cash') || shoot.primaryPaymentMethod === 'Cash';
+            const hasOnlinePayment = shoot.advanceAmount > 0;
 
             return (
               <div
@@ -208,10 +207,10 @@ export const ShootRegistryView: React.FC = () => {
                       )}
                     </span>
 
-                    {hasCashPayment && (
+                    {hasOnlinePayment && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5">
-                        <Banknote className="w-3 h-3" />
-                        <span>Cash</span>
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Online Paid</span>
                       </span>
                     )}
                   </div>
@@ -240,18 +239,22 @@ export const ShootRegistryView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Client info & Multi-event slots badge */}
-                <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
-                  <div className="truncate font-medium">
-                    <span>Client: </span>
-                    <span className="text-zinc-900 dark:text-zinc-200 font-bold">{shoot.clientName}</span>
+                {/* Client info & Copyable Contact Strip */}
+                <div className="space-y-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/60">
+                  <div className="flex items-center justify-between gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                    <div className="truncate font-medium">
+                      <span>Client: </span>
+                      <span className="text-zinc-900 dark:text-zinc-200 font-bold">{shoot.clientName}</span>
+                    </div>
+
+                    {shoot.events && shoot.events.length > 0 && (
+                      <span className="text-[11px] text-zinc-500 font-mono font-bold shrink-0">
+                        {shoot.events.length} Slot{shoot.events.length === 1 ? '' : 's'}
+                      </span>
+                    )}
                   </div>
 
-                  {shoot.events && shoot.events.length > 0 && (
-                    <span className="text-[11px] text-zinc-500 font-mono font-bold shrink-0 ml-2">
-                      {shoot.events.length} Slot{shoot.events.length === 1 ? '' : 's'}
-                    </span>
-                  )}
+                  <ContactQuickActions shoot={shoot} compact />
                 </div>
 
                 {/* Financials & Status Bar */}
@@ -300,16 +303,6 @@ export const ShootRegistryView: React.FC = () => {
                       <MessageSquare className="w-3.5 h-3.5" />
                       <span>Reminder</span>
                     </button>
-
-                    {shoot.clientPhone && (
-                      <a
-                        href={`tel:${shoot.clientPhone}`}
-                        className="p-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 transition-colors"
-                        title="Call"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                      </a>
-                    )}
 
                     <button
                       onClick={(e) => {
