@@ -39,7 +39,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F6F9] text-[#111827] selection:bg-ios-blue selection:text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FFFCF8] text-[#171717] selection:bg-[#C9440A] selection:text-white flex flex-col font-['Montserrat',sans-serif]">
       {/* Top Navigation Header */}
       <Header onOpenAppleSync={() => setIsAppleCalendarModalOpen(true)} />
 
