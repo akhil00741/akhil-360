@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getDatabase, ref, get, set } from 'firebase/database';
+import { getDatabase, ref, get, set, onValue, Unsubscribe } from 'firebase/database';
 import { Shoot } from '../types/shoot';
 
 const firebaseConfig = {
@@ -55,4 +55,21 @@ export const saveCloudDatabase = async (shoots: Shoot[], deletedIds: string[]): 
     console.error('Firebase save error:', err);
     return false;
   }
+};
+
+export const subscribeToCloudDatabase = (callback: (payload: CloudPayload) => void): Unsubscribe => {
+  return onValue(ref(db, DB_PATH), (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      callback({
+        shoots: Array.isArray(data.shoots) ? data.shoots : [],
+        deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds : [],
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      });
+    } else {
+      callback({ shoots: [], deletedIds: [], updatedAt: new Date().toISOString() });
+    }
+  }, (err) => {
+    console.error('Firebase subscription error:', err);
+  });
 };

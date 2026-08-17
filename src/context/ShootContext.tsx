@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Shoot, PaymentRecord, AppTheme, PaymentMethod, PaymentStatus } from '../types/shoot';
 import { INITIAL_SHOOTS } from '../data/sampleData';
 import { addDays, format } from 'date-fns';
-import { fetchCloudDatabase, saveCloudDatabase } from '../utils/cloudSync';
+import { fetchCloudDatabase, saveCloudDatabase, subscribeToCloudDatabase, CloudPayload } from '../utils/cloudSync';
 
 const STORAGE_KEY = 'akhil_360_shoots_prod_v1';
 const DELETED_KEY = 'akhil_360_deleted_ids_v1';
@@ -105,62 +105,62 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [reminderModalShoot, setReminderModalShoot] = useState<Shoot | null>(null);
 
+  const applyCloudUpdate = useCallback((cloudDb: CloudPayload) => {
+    // 1. Merge Cloud Deleted IDs with Local Deleted IDs
+    const combinedDeleted = new Set([...Array.from(deletedIdsRef.current), ...(cloudDb.deletedIds || [])]);
+    setDeletedIds(combinedDeleted);
+    deletedIdsRef.current = combinedDeleted;
+    localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(combinedDeleted)));
+
+    // 2. Filter out all deleted shoots from cloud list
+    const cleanCloudShoots = (cloudDb.shoots || []).filter(s => !combinedDeleted.has(s.id));
+    const localMap = new Map(shootsRef.current.filter(s => !combinedDeleted.has(s.id)).map(s => [s.id, s]));
+    let hasChanges = false;
+
+    cleanCloudShoots.forEach(cloudShoot => {
+      const localShoot = localMap.get(cloudShoot.id);
+      if (!localShoot || (new Date(cloudShoot.updatedAt || 0) > new Date(localShoot.updatedAt || 0))) {
+        localMap.set(cloudShoot.id, cloudShoot);
+        hasChanges = true;
+      }
+    });
+
+    // Purge any deleted items from localMap
+    localMap.forEach((shoot, id) => {
+      if (combinedDeleted.has(id)) {
+        localMap.delete(id);
+        hasChanges = true;
+      }
+    });
+
+    const merged = Array.from(localMap.values()).filter(s => !combinedDeleted.has(s.id));
+    setShoots(merged);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    setLastSyncedAt(new Date());
+  }, []);
+
   // Sync to Cloud function with Shared Tombstone Protection
   const triggerSync = useCallback(async () => {
     setIsSyncing(true);
     try {
       const cloudDb = await fetchCloudDatabase();
       if (cloudDb) {
-        // 1. Merge Cloud Deleted IDs with Local Deleted IDs
-        const combinedDeleted = new Set([...Array.from(deletedIdsRef.current), ...(cloudDb.deletedIds || [])]);
-        setDeletedIds(combinedDeleted);
-        deletedIdsRef.current = combinedDeleted;
-        localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(combinedDeleted)));
-
-        // 2. Filter out all deleted shoots from cloud list
-        const cleanCloudShoots = (cloudDb.shoots || []).filter(s => !combinedDeleted.has(s.id));
-        const localMap = new Map(shootsRef.current.filter(s => !combinedDeleted.has(s.id)).map(s => [s.id, s]));
-        let hasChanges = false;
-
-        cleanCloudShoots.forEach(cloudShoot => {
-          const localShoot = localMap.get(cloudShoot.id);
-          if (!localShoot || (new Date(cloudShoot.updatedAt || 0) > new Date(localShoot.updatedAt || 0))) {
-            localMap.set(cloudShoot.id, cloudShoot);
-            hasChanges = true;
-          }
-        });
-
-        // Purge any deleted items from localMap
-        localMap.forEach((shoot, id) => {
-          if (combinedDeleted.has(id)) {
-            localMap.delete(id);
-            hasChanges = true;
-          }
-        });
-
-        const merged = Array.from(localMap.values()).filter(s => !combinedDeleted.has(s.id));
-        setShoots(merged);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-
-        if (hasChanges || cloudDb.shoots.length !== merged.length || (cloudDb.deletedIds || []).length !== combinedDeleted.size) {
-          await saveCloudDatabase(merged, Array.from(combinedDeleted));
-        }
+        applyCloudUpdate(cloudDb);
       }
-      setLastSyncedAt(new Date());
     } catch (e) {
       console.error('Sync failed:', e);
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+  }, [applyCloudUpdate]);
 
-  // Sync on initial load and set background periodic sync
+  // Subscribe to real-time Firebase updates
   useEffect(() => {
     triggerSync();
 
-    const interval = setInterval(() => {
-      triggerSync();
-    }, 10000); // Check every 10 seconds
+    const unsubscribe = subscribeToCloudDatabase((cloudDb) => {
+      applyCloudUpdate(cloudDb);
+    });
 
     const handleFocus = () => {
       triggerSync();
@@ -168,10 +168,10 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     window.addEventListener('focus', handleFocus);
     return () => {
-      clearInterval(interval);
+      unsubscribe();
       window.removeEventListener('focus', handleFocus);
     };
-  }, [triggerSync]);
+  }, [triggerSync, applyCloudUpdate]);
 
   // Persist to local storage and sync to cloud
   const persistShoots = (newShoots: Shoot[]) => {
