@@ -26,6 +26,8 @@ const cloudSync = read('src/utils/cloudSync.ts');
 const contactBook = read('src/utils/contactBook.ts');
 const sessionTracking = read('src/utils/sessionTracking.ts');
 const calendarSync = read('src/utils/calendarSync.ts');
+const deployWorkflow = read('.github/workflows/deploy.yml');
+const readme = read('README.md');
 const componentText = listFiles(resolve(root, 'src/components'), '.tsx')
   .map((filePath) => readFileSync(filePath, 'utf8'))
   .join('\n');
@@ -81,17 +83,47 @@ const checks = [
     pass: !/\bcash\b|cash in hand/i.test(componentText),
   },
   {
+    name: 'README describes Firebase cloud sync and online-only payments',
+    pass:
+      /Firebase Realtime Database/.test(readme) &&
+      /online payment/i.test(readme) &&
+      !/Cash &|Cash in Hand|100% Offline/i.test(readme),
+  },
+  {
     name: 'production build does not expose demo reset or seeded test records',
     pass:
       !/Reset Demo Data|sample demo data|resetToSampleData|INITIAL_SHOOTS|Shivaansh|Live Studio|Test Shoot/.test(`${componentText}\n${shootContext}`) &&
       /akhil_360_shoots_prod_v2/.test(shootContext),
   },
   {
-    name: 'cloud sync is opt-in through environment variables',
+    name: 'cloud sync uses environment variables without source-embedded Firebase keys',
     pass:
       /VITE_ENABLE_CLOUD_SYNC/.test(cloudSync) &&
       /VITE_FIREBASE_API_KEY/.test(cloudSync) &&
       !/AIzaSy|akhil-360-default-rtdb|794900112395/.test(cloudSync),
+  },
+  {
+    name: 'cloud sync writes per-shoot Firebase records with delete tombstones',
+    pass:
+      /shootsById/.test(cloudSync) &&
+      /deletedIdsById/.test(cloudSync) &&
+      /update\(ref\(db, DB_PATH\), updates\)/.test(cloudSync) &&
+      !/set\(ref\(db, DB_PATH\)/.test(cloudSync) &&
+      /production_v1/.test(cloudSync),
+  },
+  {
+    name: 'cloud merge republishes newer local records for existing local users',
+    pass:
+      /shouldPublishMergedState/.test(shootContext) &&
+      /saveCloudDatabase\(merged, Array\.from\(combinedDeleted\)\)/.test(shootContext),
+  },
+  {
+    name: 'GitHub Pages production build enables Firebase cloud sync',
+    pass:
+      /VITE_ENABLE_CLOUD_SYNC:\s*"true"/.test(deployWorkflow) &&
+      /VITE_FIREBASE_DATABASE_URL/.test(deployWorkflow) &&
+      /akhil-360-default-rtdb\.firebaseio\.com/.test(deployWorkflow) &&
+      /VITE_FIREBASE_DB_PATH:\s*"akhil360\/production_v1"/.test(deployWorkflow),
   },
   {
     name: 'contacts auto-save from shoots and are reachable from navigation',

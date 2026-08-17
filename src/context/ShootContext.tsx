@@ -82,15 +82,25 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const applyCloudUpdate = useCallback((cloudDb: CloudPayload) => {
-    // 1. Merge Cloud Deleted IDs with Local Deleted IDs
-    const combinedDeleted = new Set([...Array.from(deletedIdsRef.current), ...(cloudDb.deletedIds || [])]);
+    const localDeletedIds = new Set(deletedIdsRef.current);
+    const cloudDeletedIds = new Set(cloudDb.deletedIds || []);
+    const combinedDeleted = new Set([...Array.from(localDeletedIds), ...Array.from(cloudDeletedIds)]);
     setDeletedIds(combinedDeleted);
     deletedIdsRef.current = combinedDeleted;
     localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(combinedDeleted)));
 
-    // 2. Filter out all deleted shoots from cloud list
     const cleanCloudShoots = (cloudDb.shoots || []).filter(s => !combinedDeleted.has(s.id));
-    const localMap = new Map(shootsRef.current.filter(s => !combinedDeleted.has(s.id)).map(s => [s.id, s]));
+    const cloudMap = new Map(cleanCloudShoots.map(s => [s.id, s]));
+    const localActiveShoots = shootsRef.current.filter(s => !combinedDeleted.has(s.id));
+    const localMap = new Map(localActiveShoots.map(s => [s.id, s]));
+    let shouldPublishMergedState = Array.from(localDeletedIds).some(id => !cloudDeletedIds.has(id));
+
+    localActiveShoots.forEach((localShoot) => {
+      const cloudShoot = cloudMap.get(localShoot.id);
+      if (!cloudShoot || new Date(localShoot.updatedAt || 0) > new Date(cloudShoot.updatedAt || 0)) {
+        shouldPublishMergedState = true;
+      }
+    });
 
     cleanCloudShoots.forEach(cloudShoot => {
       const localShoot = localMap.get(cloudShoot.id);
@@ -111,6 +121,12 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     persistContacts(upsertContactsFromShoots(contactsRef.current, merged));
     setLastSyncedAt(new Date());
+
+    if (isCloudSyncConfigured && shouldPublishMergedState) {
+      saveCloudDatabase(merged, Array.from(combinedDeleted)).then(() => {
+        setLastSyncedAt(new Date());
+      });
+    }
   }, [persistContacts]);
 
   // Sync to Cloud function with Shared Tombstone Protection
@@ -315,7 +331,7 @@ export const ShootProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSelectedShoot(null);
     }
 
-    // 3. Immediately overwrite cloud database with shared deletedIds
+    // 3. Immediately publish the tombstone so other devices remove it too.
     setIsSyncing(true);
     try {
       await saveCloudDatabase(updatedShoots, Array.from(newDeleted));

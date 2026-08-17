@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getDatabase, ref, get, set, onValue, Unsubscribe } from 'firebase/database';
+import { getDatabase, ref, get, onValue, update, Unsubscribe } from 'firebase/database';
 import { Shoot } from '../types/shoot';
 
 const firebaseConfig = {
@@ -13,10 +13,10 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
 };
 
-const DB_PATH = import.meta.env.VITE_FIREBASE_DB_PATH || 'akhil360/studio';
+const DB_PATH = import.meta.env.VITE_FIREBASE_DB_PATH || 'akhil360/production_v1';
 
 export const isCloudSyncConfigured =
-  import.meta.env.VITE_ENABLE_CLOUD_SYNC === 'true' &&
+  import.meta.env.VITE_ENABLE_CLOUD_SYNC !== 'false' &&
   Boolean(
     firebaseConfig.apiKey &&
     firebaseConfig.authDomain &&
@@ -38,6 +38,36 @@ export interface CloudPayload {
   updatedAt: string;
 }
 
+const parseCloudPayload = (value: unknown): CloudPayload => {
+  const data = value && typeof value === 'object' ? value as {
+    shoots?: unknown;
+    shootsById?: Record<string, Shoot | null | undefined>;
+    deletedIds?: unknown;
+    deletedIdsById?: Record<string, boolean | null | undefined>;
+    updatedAt?: string;
+  } : {};
+
+  const shoots = data.shootsById && typeof data.shootsById === 'object'
+    ? Object.values(data.shootsById).filter((shoot): shoot is Shoot => Boolean(shoot?.id))
+    : Array.isArray(data.shoots)
+      ? data.shoots.filter((shoot): shoot is Shoot => Boolean(shoot?.id))
+      : [];
+
+  const deletedIds = data.deletedIdsById && typeof data.deletedIdsById === 'object'
+    ? Object.entries(data.deletedIdsById)
+        .filter(([, isDeleted]) => Boolean(isDeleted))
+        .map(([id]) => id)
+    : Array.isArray(data.deletedIds)
+      ? data.deletedIds.filter((id): id is string => typeof id === 'string')
+      : [];
+
+  return {
+    shoots,
+    deletedIds,
+    updatedAt: data.updatedAt || new Date().toISOString(),
+  };
+};
+
 export const fetchCloudDatabase = async (): Promise<CloudPayload | null> => {
   const db = getConfiguredDatabase();
   if (!db) {
@@ -47,12 +77,7 @@ export const fetchCloudDatabase = async (): Promise<CloudPayload | null> => {
   try {
     const snapshot = await get(ref(db, DB_PATH));
     if (snapshot.exists()) {
-      const data = snapshot.val();
-      return {
-        shoots: Array.isArray(data.shoots) ? data.shoots : [],
-        deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds : [],
-        updatedAt: data.updatedAt || new Date().toISOString(),
-      };
+      return parseCloudPayload(snapshot.val());
     }
     return { shoots: [], deletedIds: [], updatedAt: new Date().toISOString() };
   } catch (err) {
@@ -66,12 +91,22 @@ export const saveCloudDatabase = async (shoots: Shoot[], deletedIds: string[]): 
   if (!db) return true;
 
   try {
+    const updatedAt = new Date().toISOString();
     const cleanShoots = shoots.filter(s => !deletedIds.includes(s.id));
-    await set(ref(db, DB_PATH), {
-      shoots: cleanShoots,
-      deletedIds,
-      updatedAt: new Date().toISOString(),
+    const updates: Record<string, Shoot | string | boolean | null> = {
+      updatedAt,
+    };
+
+    cleanShoots.forEach((shoot) => {
+      updates[`shootsById/${shoot.id}`] = shoot;
     });
+
+    deletedIds.forEach((id) => {
+      updates[`deletedIdsById/${id}`] = true;
+      updates[`shootsById/${id}`] = null;
+    });
+
+    await update(ref(db, DB_PATH), updates);
     return true;
   } catch (err) {
     console.error('Firebase save error:', err);
@@ -88,12 +123,7 @@ export const subscribeToCloudDatabase = (callback: (payload: CloudPayload) => vo
 
   return onValue(ref(db, DB_PATH), (snapshot) => {
     if (snapshot.exists()) {
-      const data = snapshot.val();
-      callback({
-        shoots: Array.isArray(data.shoots) ? data.shoots : [],
-        deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds : [],
-        updatedAt: data.updatedAt || new Date().toISOString(),
-      });
+      callback(parseCloudPayload(snapshot.val()));
     } else {
       callback({ shoots: [], deletedIds: [], updatedAt: new Date().toISOString() });
     }
