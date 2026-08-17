@@ -1,16 +1,10 @@
-// AKHIL 360 Studio Service Worker - Firebase Realtime Active
-const CACHE_NAME = 'akhil-360-v2-firebase';
-
+// AKHIL 360 Studio Service Worker for Native iOS Lock Screen Notifications
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(keys.map((k) => caches.delete(k)));
-    }).then(() => self.clients.claim())
-  );
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('notificationclick', (event) => {
