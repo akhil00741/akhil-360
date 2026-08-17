@@ -1,7 +1,22 @@
+import { initializeApp, getApps } from 'firebase/app';
+import { getDatabase, ref, get, set } from 'firebase/database';
 import { Shoot } from '../types/shoot';
 
-// Dedicated High-Speed Worldwide Studio Cloud Database for AKHIL 360
-const CLOUD_DB_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a003b9052f218f';
+const firebaseConfig = {
+  apiKey: "AIzaSyDl4bTVhwdzuLQeKMCw2XQPDjt3E9wtY8U",
+  authDomain: "akhil-360.firebaseapp.com",
+  databaseURL: "https://akhil-360-default-rtdb.firebaseio.com",
+  projectId: "akhil-360",
+  storageBucket: "akhil-360.firebasestorage.app",
+  messagingSenderId: "794900112395",
+  appId: "1:794900112395:web:37f2a9bc345a414c8d530e",
+  measurementId: "G-E6QNN8GXP4"
+};
+
+// Initialize Firebase only once
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db = getDatabase(app);
+const DB_PATH = 'akhil360/studio';
 
 export interface CloudPayload {
   shoots: Shoot[];
@@ -11,21 +26,9 @@ export interface CloudPayload {
 
 export const fetchCloudDatabase = async (): Promise<CloudPayload | null> => {
   try {
-    const res = await fetch(CLOUD_DB_URL, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!res.ok) {
-      return null;
-    }
-
-    const json = await res.json();
-    const data = json.data;
-    if (data) {
+    const snapshot = await get(ref(db, DB_PATH));
+    if (snapshot.exists()) {
+      const data = snapshot.val();
       return {
         shoots: Array.isArray(data.shoots) ? data.shoots : [],
         deletedIds: Array.isArray(data.deletedIds) ? data.deletedIds : [],
@@ -34,7 +37,7 @@ export const fetchCloudDatabase = async (): Promise<CloudPayload | null> => {
     }
     return { shoots: [], deletedIds: [], updatedAt: new Date().toISOString() };
   } catch (err) {
-    console.error('Error fetching cloud database:', err);
+    console.error('Firebase fetch error:', err);
     return null;
   }
 };
@@ -42,27 +45,14 @@ export const fetchCloudDatabase = async (): Promise<CloudPayload | null> => {
 export const saveCloudDatabase = async (shoots: Shoot[], deletedIds: string[]): Promise<boolean> => {
   try {
     const cleanShoots = shoots.filter(s => !deletedIds.includes(s.id));
-    const payload = {
-      name: 'AKHIL_360_STUDIO_DB',
-      data: {
-        shoots: cleanShoots,
-        deletedIds,
-        updatedAt: new Date().toISOString(),
-      },
-    };
-
-    const res = await fetch(CLOUD_DB_URL, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(payload),
+    await set(ref(db, DB_PATH), {
+      shoots: cleanShoots,
+      deletedIds,
+      updatedAt: new Date().toISOString(),
     });
-
-    return res.ok;
+    return true;
   } catch (err) {
-    console.error('Error saving cloud database:', err);
+    console.error('Firebase save error:', err);
     return false;
   }
 };

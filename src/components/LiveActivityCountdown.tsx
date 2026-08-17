@@ -3,6 +3,9 @@ import { Shoot } from '../types/shoot';
 import { Clock, Navigation, MapPin, Sparkles, MessageSquare, AlertCircle, CheckCircle2, Bell, Camera, Car } from 'lucide-react';
 import { getWhatsAppLink } from '../utils/helpers';
 import { downloadAppleCalendar } from '../utils/calendarSync';
+import { LiveActivity } from '../utils/liveActivityPlugin';
+
+let liveActivityId: string | null = null;
 
 interface LiveActivityCountdownProps {
   upcomingShoot: Shoot | null;
@@ -35,11 +38,40 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
       setTimeLeft({ hours, minutes, seconds, totalMinutes, isPast: false });
+      
+      // Update Native iOS Live Activity
+      const venue = upcomingShoot.events?.[0]?.venue || upcomingShoot.location || 'Studio';
+      const progressPercent = Math.min(100, Math.max(10, 100 - (totalMinutes / 360) * 100));
+      
+      try {
+        if (!liveActivityId) {
+          LiveActivity.startActivity({
+            name: upcomingShoot.title,
+            timeRemaining: totalMinutes,
+            venue: venue,
+            progress: progressPercent
+          }).then(res => { liveActivityId = res.id; }).catch(() => {});
+        } else {
+          LiveActivity.updateActivity({
+            id: liveActivityId,
+            timeRemaining: totalMinutes,
+            progress: progressPercent
+          }).catch(() => {});
+        }
+      } catch (e) {
+        // Plugin not running (i.e. web context)
+      }
     };
 
     calculateTime();
     const timer = setInterval(calculateTime, 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      if (liveActivityId) {
+        LiveActivity.endActivity({ id: liveActivityId }).catch(() => {});
+        liveActivityId = null;
+      }
+    };
   }, [upcomingShoot]);
 
   const handleTriggerImmediateNotification = (e: React.MouseEvent) => {
