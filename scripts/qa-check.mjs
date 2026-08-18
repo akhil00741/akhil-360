@@ -172,9 +172,11 @@ const checks = [
       /BEGIN:VCARD/.test(contactBook) &&
       /ORG:AKHIL 360/.test(contactBook) &&
       /URL;TYPE=Instagram/.test(contactBook) &&
-      /Save to iPhone/.test(contactsView) &&
-      /navigator\.share/.test(contactsView) &&
-      /Card Ready/.test(contactsView),
+      /Add to Contacts/.test(contactsView) &&
+      /openVCardInline/.test(contactsView) &&
+      /window\.open\(url, '_blank'\)/.test(contactsView) &&
+      /text\/x-vcard/.test(contactsView) &&
+      /Opening Contact/.test(contactsView),
   },
 ];
 

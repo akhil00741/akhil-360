@@ -26,15 +26,39 @@ const getSafeFileName = (value: string) => {
   return value.trim().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'Contact';
 };
 
-const saveVCardFile = async (targetContacts: ClientContact[], filename: string) => {
+const V_CARD_MIME_TYPE = 'text/x-vcard;charset=utf-8';
+
+const isAppleTouchDevice = () => {
+  return /iPad|iPhone|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
+const openVCardInline = (vcard: string) => {
+  const blob = new Blob([vcard], { type: V_CARD_MIME_TYPE });
+  const url = URL.createObjectURL(blob);
+  const openedWindow = window.open(url, '_blank');
+
+  if (!openedWindow) {
+    window.location.href = url;
+  }
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+};
+
+const saveVCardFile = async (targetContacts: ClientContact[], filename: string, options?: { preferInlineOpen?: boolean }) => {
   const vcard = contactsToVCard(targetContacts);
-  const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
-  const file = new File([blob], filename, { type: 'text/vcard' });
+  const blob = new Blob([vcard], { type: V_CARD_MIME_TYPE });
+  const file = new File([blob], filename, { type: 'text/x-vcard' });
   const shareData: ShareData = {
     files: [file],
     title: filename,
     text: targetContacts.length === 1 ? `Save ${targetContacts[0].name} to Contacts` : 'Save AKHIL 360 contacts',
   };
+
+  if (options?.preferInlineOpen || (targetContacts.length === 1 && isAppleTouchDevice())) {
+    openVCardInline(vcard);
+    return;
+  }
 
   if (navigator.share && navigator.canShare?.(shareData)) {
     await navigator.share(shareData);
@@ -55,7 +79,7 @@ export const ContactsView: React.FC = () => {
   const { contacts, setIsCreateModalOpen } = useShoots();
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [savedContactId, setSavedContactId] = useState<string | null>(null);
+  const [openedContactId, setOpenedContactId] = useState<string | null>(null);
 
   const filteredContacts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -78,9 +102,13 @@ export const ContactsView: React.FC = () => {
 
   const handleSaveContactCard = async (contact: ClientContact) => {
     try {
-      await saveVCardFile([contact], `AKHIL_360_${getSafeFileName(contact.name || contact.phone)}.vcf`);
-      setSavedContactId(contact.id);
-      window.setTimeout(() => setSavedContactId((current) => current === contact.id ? null : current), 1800);
+      await saveVCardFile(
+        [contact],
+        `AKHIL_360_${getSafeFileName(contact.name || contact.phone)}.vcf`,
+        { preferInlineOpen: true },
+      );
+      setOpenedContactId(contact.id);
+      window.setTimeout(() => setOpenedContactId((current) => current === contact.id ? null : current), 1800);
     } catch (error) {
       if ((error as DOMException).name !== 'AbortError') {
         console.error('Unable to prepare contact card', error);
@@ -177,10 +205,10 @@ export const ContactsView: React.FC = () => {
                       type="button"
                       onClick={() => handleSaveContactCard(contact)}
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#B83A08] px-3 text-xs font-extrabold text-white shadow-xs transition-colors hover:bg-[#923006]"
-                      aria-label={`Save ${contact.name} as an iPhone contact card`}
+                      aria-label={`Open ${contact.name} contact card to add to Contacts`}
                     >
-                      {savedContactId === contact.id ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
-                      <span>{savedContactId === contact.id ? 'Card Ready' : 'Save to iPhone'}</span>
+                      {openedContactId === contact.id ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                      <span>{openedContactId === contact.id ? 'Opening Contact' : 'Add to Contacts'}</span>
                     </button>
 
                     <button
