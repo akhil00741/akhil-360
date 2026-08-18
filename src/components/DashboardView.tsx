@@ -91,32 +91,11 @@ export const DashboardView: React.FC = () => {
     .slice(0, 4);
 
   return (
-    <div className="space-y-5 pb-24">
-      
-      {/* Top Clean Light Banner */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-white border border-zinc-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
-              Studio Active • {todayFormatted}
-            </span>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-900 mt-1 tracking-tight">
-            Dashboard Overview
-          </h2>
-          <p className="text-xs text-zinc-500 mt-0.5 font-medium">
-            Manage client bookings, online payments, 30-day storage clearance & wfolio galleries.
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="min-h-[44px] flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-[#B83A08] hover:bg-[#923006] text-white text-xs sm:text-sm font-extrabold shadow-glow-blue ring-1 ring-[#923006]/20 transition-all active:scale-95 shrink-0 focus:outline-none focus:ring-2 focus:ring-[#B83A08]/35"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Register Shoot</span>
-        </button>
+    <div className="space-y-4 pb-24">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl sm:text-2xl font-extrabold text-zinc-950 tracking-tight">
+          Dashboard Overview
+        </h2>
       </div>
 
       {/* 🌟 TODAY'S LIVE STUDIO BRIEFING & SCHEDULE */}
@@ -423,7 +402,7 @@ export const DashboardView: React.FC = () => {
               Welcome to AKHIL 360 Studio!
             </h3>
             <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-              Your clean dashboard is ready. Tap <strong>Register Shoot</strong> to log your first booking, time slots, online advance payments, and wfolio gallery links.
+              Your clean dashboard is ready. Tap <strong>New Shoot</strong> to log your first booking, time slots, online advance payments, and wfolio gallery links.
             </p>
           </div>
           <button
@@ -431,7 +410,7 @@ export const DashboardView: React.FC = () => {
             className="min-h-[44px] inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-[#B83A08] hover:bg-[#923006] text-white text-xs font-extrabold shadow-glow-blue ring-1 ring-[#923006]/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#B83A08]/35"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Register Your First Shoot</span>
+            <span>Create First Shoot</span>
           </button>
         </div>
       )}

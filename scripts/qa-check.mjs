@@ -18,6 +18,8 @@ const listFiles = (directory, extension) => readdirSync(directory, { withFileTyp
 const wfolioBadge = read('src/components/WfolioBadge.tsx');
 const shootDetailModal = read('src/components/ShootDetailModal.tsx');
 const dashboardView = read('src/components/DashboardView.tsx');
+const calendarView = read('src/components/CalendarView.tsx');
+const shootRegistryView = read('src/components/ShootRegistryView.tsx');
 const contactsView = read('src/components/ContactsView.tsx');
 const bottomNav = read('src/components/BottomNav.tsx');
 const header = read('src/components/Header.tsx');
@@ -84,12 +86,36 @@ const checks = [
     pass: !/\bcash\b|cash in hand/i.test(componentText),
   },
   {
-    name: 'header keeps cloud sync silent and shows studio actions only',
+    name: 'header keeps cloud sync silent, shows the date, and keeps studio actions',
     pass:
       !/Cloud Live|Local Only|isCloudEnabled|triggerSync|HardDrive|RefreshCw/.test(header) &&
-      /Studio Desk/.test(header) &&
+      /EEE, dd MMM yyyy/.test(header) &&
       /New Shoot/.test(header) &&
       /Calendar/.test(header),
+  },
+  {
+    name: 'dashboard starts with a simple overview heading without redundant intro CTA copy',
+    pass:
+      /Dashboard Overview/.test(dashboardView) &&
+      !/Studio Active|Manage client bookings|<span>Register Shoot<\/span>|Register Your First Shoot/.test(dashboardView) &&
+      /Create First Shoot/.test(dashboardView),
+  },
+  {
+    name: 'calendar uses compact sync wording and client-first selected-day cards',
+    pass:
+      /<h2[^>]*>\s*Calendar\s*<\/h2>/s.test(calendarView) &&
+      /Sync Calendar/.test(calendarView) &&
+      /Import ICS/.test(calendarView) &&
+      /shoot\.clientName \|\| 'Client Name Pending'/.test(calendarView) &&
+      !/Shoot Schedule & Timeline|Apple Cal Auto-Sync/.test(calendarView),
+  },
+  {
+    name: 'shoot registry uses compact activity cards with prominent client names',
+    pass:
+      /Studio Activity Cards/.test(shootRegistryView) &&
+      /getRegistryStatusMeta/.test(shootRegistryView) &&
+      /shoot\.clientName \|\| 'Client Name Pending'/.test(shootRegistryView) &&
+      /min-h-11/.test(shootRegistryView),
   },
   {
     name: 'README describes Firebase cloud sync and online-only payments',
@@ -162,6 +188,13 @@ const checks = [
       /contactsToVCard/.test(contactsView) &&
       /id: 'contacts'/.test(bottomNav) &&
       /activeTab === 'contacts'/.test(appView),
+  },
+  {
+    name: 'tab changes reset scroll so page headings remain visible',
+    pass:
+      /useEffect/.test(appView) &&
+      /window\.scrollTo\(\{ left: 0, top: 0 \}\)/.test(appView) &&
+      /\[activeTab\]/.test(appView),
   },
   {
     name: 'contact book deduplicates clients and supports iPhone-friendly vCard export',

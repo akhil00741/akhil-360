@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ShootProvider } from './context/ShootContext';
 import { useShoots } from './context/useShoots';
 import { Header } from './components/Header';
@@ -39,6 +39,10 @@ const MainApp: React.FC = () => {
     setIsCreateModalOpen(false);
     setShootToEdit(null);
   };
+
+  useEffect(() => {
+    window.scrollTo({ left: 0, top: 0 });
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#FFFCF8] text-[#1F1A17] selection:bg-ios-blue selection:text-white flex flex-col font-sans">

@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
   const { setIsCreateModalOpen } = useShoots();
-  const todayLabel = format(new Date(), 'EEE, dd MMM');
+  const todayLabel = format(new Date(), 'EEE, dd MMM yyyy');
 
   return (
     <header className="sticky top-0 z-30 ios-glass-header px-4 py-3 sm:px-6">
@@ -23,15 +23,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
             <h1 className="flex items-center gap-1 text-[17px] sm:text-xl font-extrabold tracking-normal text-zinc-950 whitespace-nowrap leading-tight">
               AKHIL <span className="text-[#C9440A]">360</span>
             </h1>
-            <p className="text-[11px] sm:text-xs text-zinc-500 font-semibold leading-none truncate">
-              Studio Desk
+            <p className="mt-0.5 flex items-center gap-1 text-[11px] sm:text-xs text-zinc-500 font-bold leading-none truncate">
+              <Calendar className="h-3 w-3 text-[#C9440A]" />
+              <span>{todayLabel}</span>
             </p>
           </div>
-        </div>
-
-        <div className="hidden md:flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white/80 px-3.5 py-2 shadow-2xs">
-          <Calendar className="h-4 w-4 text-[#C9440A]" />
-          <span className="text-xs font-extrabold text-zinc-800">{todayLabel}</span>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
