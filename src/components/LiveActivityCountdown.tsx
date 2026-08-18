@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shoot, ShootEventSlot } from '../types/shoot';
-import { Navigation, Camera, Car } from 'lucide-react';
+import { Navigation, Camera, MapPin } from 'lucide-react';
 import { LiveActivity } from '../utils/liveActivityPlugin';
 import { getSessionTrackerState, SessionPhase } from '../utils/sessionTracking';
 
@@ -132,7 +132,7 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
             <span className="text-xs font-mono font-bold text-emerald-400">
               {venue}
             </span>
-            <Car className="w-3.5 h-3.5 text-emerald-400" />
+            <MapPin className="w-3.5 h-3.5 text-emerald-400" />
           </div>
         </div>
 
@@ -174,24 +174,16 @@ export const LiveActivityCountdown: React.FC<LiveActivityCountdownProps> = ({ up
           </div>
         </div>
 
-        {/* Live Route & Quick Actions */}
-        <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center space-x-1.5 text-zinc-300 font-medium">
-            <Navigation className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Traffic: <strong>Clear</strong> (Beat rush hour)</span>
-          </div>
-
-          <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(venue)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2 rounded-xl bg-ios-blue hover:bg-blue-600 text-white font-bold flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 text-xs"
-            >
-              <Navigation className="w-3.5 h-3.5" />
-              <span>Get Directions</span>
-            </a>
-          </div>
+        <div className="pt-3 border-t border-white/10 flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(venue)}`}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open Google Maps for ${venue}`}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-xs transition-colors hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 active:scale-95"
+          >
+            <Navigation className="w-4 h-4" />
+          </a>
         </div>
       </div>
 

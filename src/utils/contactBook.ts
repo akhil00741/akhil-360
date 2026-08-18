@@ -130,13 +130,31 @@ const escapeVCardValue = (value?: string) => {
     .replace(/;/g, '\\;');
 };
 
+const getNameParts = (value?: string) => {
+  const parts = normalizeText(value || 'Unnamed Client').split(/\s+/).filter(Boolean);
+  const firstName = parts.shift() || '';
+  const lastName = parts.join(' ');
+  return { firstName, lastName };
+};
+
+const getInstagramUrl = (value?: string) => {
+  const instagram = normalizeText(value);
+  if (!instagram) return '';
+  if (/^https?:\/\//i.test(instagram)) return instagram;
+  return `https://instagram.com/${instagram.replace(/^@/, '')}`;
+};
+
 export const contactsToVCard = (contacts: ClientContact[]) => {
   return sortContacts(contacts)
     .map((contact) => {
+      const { firstName, lastName } = getNameParts(contact.name);
+      const instagramUrl = getInstagramUrl(contact.instagram);
       const lines = [
         'BEGIN:VCARD',
         'VERSION:3.0',
+        `N:${escapeVCardValue(lastName)};${escapeVCardValue(firstName)};;;`,
         `FN:${escapeVCardValue(contact.name || 'Unnamed Client')}`,
+        'ORG:AKHIL 360',
       ];
 
       if (contact.phone) {
@@ -149,6 +167,10 @@ export const contactsToVCard = (contacts: ClientContact[]) => {
 
       if (contact.instagram) {
         lines.push(`NOTE:Instagram ${escapeVCardValue(contact.instagram)}`);
+      }
+
+      if (instagramUrl) {
+        lines.push(`URL;TYPE=Instagram:${escapeVCardValue(instagramUrl)}`);
       }
 
       lines.push('END:VCARD');

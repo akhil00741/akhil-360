@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { AtSign, Check, Copy, Download, Mail, MessageSquare, Phone, Search, UserRound } from 'lucide-react';
+import { AtSign, Check, Copy, Download, Mail, MessageSquare, Phone, Search, UserPlus, UserRound } from 'lucide-react';
 import { useShoots } from '../context/useShoots';
 import { contactsToVCard } from '../utils/contactBook';
 import { getWhatsAppLink } from '../utils/helpers';
+import type { ClientContact } from '../types/shoot';
 
 const copyToClipboard = async (text: string) => {
   if (navigator.clipboard && window.isSecureContext) {
@@ -21,10 +22,40 @@ const copyToClipboard = async (text: string) => {
   document.body.removeChild(textarea);
 };
 
+const getSafeFileName = (value: string) => {
+  return value.trim().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'Contact';
+};
+
+const saveVCardFile = async (targetContacts: ClientContact[], filename: string) => {
+  const vcard = contactsToVCard(targetContacts);
+  const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
+  const file = new File([blob], filename, { type: 'text/vcard' });
+  const shareData: ShareData = {
+    files: [file],
+    title: filename,
+    text: targetContacts.length === 1 ? `Save ${targetContacts[0].name} to Contacts` : 'Save AKHIL 360 contacts',
+  };
+
+  if (navigator.share && navigator.canShare?.(shareData)) {
+    await navigator.share(shareData);
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 export const ContactsView: React.FC = () => {
   const { contacts, setIsCreateModalOpen } = useShoots();
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [savedContactId, setSavedContactId] = useState<string | null>(null);
 
   const filteredContacts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -45,17 +76,26 @@ export const ContactsView: React.FC = () => {
     window.setTimeout(() => setCopiedId((current) => current === id ? null : current), 1400);
   };
 
-  const handleExportVCard = () => {
-    const vcard = contactsToVCard(filteredContacts);
-    const blob = new Blob([vcard], { type: 'text/vcard;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `AKHIL_360_Contacts_${new Date().toISOString().split('T')[0]}.vcf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleSaveContactCard = async (contact: ClientContact) => {
+    try {
+      await saveVCardFile([contact], `AKHIL_360_${getSafeFileName(contact.name || contact.phone)}.vcf`);
+      setSavedContactId(contact.id);
+      window.setTimeout(() => setSavedContactId((current) => current === contact.id ? null : current), 1800);
+    } catch (error) {
+      if ((error as DOMException).name !== 'AbortError') {
+        console.error('Unable to prepare contact card', error);
+      }
+    }
+  };
+
+  const handleExportVCard = async () => {
+    try {
+      await saveVCardFile(filteredContacts, `AKHIL_360_Contacts_${new Date().toISOString().split('T')[0]}.vcf`);
+    } catch (error) {
+      if ((error as DOMException).name !== 'AbortError') {
+        console.error('Unable to export contact cards', error);
+      }
+    }
   };
 
   return (
@@ -116,8 +156,8 @@ export const ContactsView: React.FC = () => {
 
             return (
               <article key={contact.id} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-56 flex-1">
                     <div className="flex items-center gap-2">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-ios-blue ring-1 ring-blue-100">
                         <UserRound className="h-5 w-5" />
@@ -132,15 +172,27 @@ export const ContactsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(`all-${contact.id}`, copyBlock)}
-                    className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-extrabold text-emerald-800 transition-colors hover:bg-emerald-100"
-                    aria-label={`Copy all contact information for ${contact.name}`}
-                  >
-                    {copiedId === `all-${contact.id}` ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    <span>{copiedId === `all-${contact.id}` ? 'Copied' : 'Copy All'}</span>
-                  </button>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveContactCard(contact)}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#B83A08] px-3 text-xs font-extrabold text-white shadow-xs transition-colors hover:bg-[#923006]"
+                      aria-label={`Save ${contact.name} as an iPhone contact card`}
+                    >
+                      {savedContactId === contact.id ? <Check className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                      <span>{savedContactId === contact.id ? 'Card Ready' : 'Save to iPhone'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`all-${contact.id}`, copyBlock)}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-extrabold text-emerald-800 transition-colors hover:bg-emerald-100"
+                      aria-label={`Copy all contact information for ${contact.name}`}
+                    >
+                      {copiedId === `all-${contact.id}` ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      <span>{copiedId === `all-${contact.id}` ? 'Copied' : 'Copy All'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">

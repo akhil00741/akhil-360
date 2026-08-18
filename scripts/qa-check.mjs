@@ -77,7 +77,7 @@ const checks = [
   },
   {
     name: 'traffic panel language is removed from UI and calendar reminders',
-    pass: !/Beat the Traffic|Google Maps Live|Apple Maps Traffic|beat the traffic|live traffic|Check traffic/i.test(`${componentText}\n${calendarSync}`),
+    pass: !/Beat the Traffic|Beat rush|Google Maps Live|Apple Maps Traffic|Traffic:|beat the traffic|live traffic|Check traffic|Get Directions/i.test(`${componentText}\n${calendarSync}`),
   },
   {
     name: 'cash-in-hand language is absent from visible components',
@@ -164,12 +164,17 @@ const checks = [
       /activeTab === 'contacts'/.test(appView),
   },
   {
-    name: 'contact book deduplicates clients and supports vCard export',
+    name: 'contact book deduplicates clients and supports iPhone-friendly vCard export',
     pass:
       /upsertContactFromShoot/.test(contactBook) &&
       /getContactKey/.test(contactBook) &&
       /contactsToVCard/.test(contactBook) &&
-      /BEGIN:VCARD/.test(contactBook),
+      /BEGIN:VCARD/.test(contactBook) &&
+      /ORG:AKHIL 360/.test(contactBook) &&
+      /URL;TYPE=Instagram/.test(contactBook) &&
+      /Save to iPhone/.test(contactsView) &&
+      /navigator\.share/.test(contactsView) &&
+      /Card Ready/.test(contactsView),
   },
 ];
 
