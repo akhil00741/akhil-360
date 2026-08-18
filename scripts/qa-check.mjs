@@ -106,6 +106,8 @@ const checks = [
   {
     name: 'cloud sync writes per-shoot Firebase records with delete tombstones',
     pass:
+      /sanitizeForFirebase/.test(cloudSync) &&
+      /\.filter\(\(\[, item\]\) => item !== undefined\)/.test(cloudSync) &&
       /shootsById/.test(cloudSync) &&
       /deletedIdsById/.test(cloudSync) &&
       /shoots: cleanShoots/.test(cloudSync) &&

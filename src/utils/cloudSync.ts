@@ -40,6 +40,24 @@ export interface CloudPayload {
   updatedAt: string;
 }
 
+const sanitizeForFirebase = <T,>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForFirebase(item)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, item]) => item !== undefined)
+        .map(([key, item]) => [key, sanitizeForFirebase(item)]),
+    ) as T;
+  }
+
+  return value;
+};
+
 const parseCloudPayload = (value: unknown): CloudPayload => {
   const data = value && typeof value === 'object' ? value as {
     shoots?: unknown;
@@ -105,7 +123,9 @@ export const saveCloudDatabase = async (shoots: Shoot[], deletedIds: string[]): 
   try {
     const updatedAt = new Date().toISOString();
     const cleanDeletedIds = Array.from(new Set(deletedIds));
-    const cleanShoots = shoots.filter(s => !cleanDeletedIds.includes(s.id));
+    const cleanShoots = shoots
+      .filter(s => !cleanDeletedIds.includes(s.id))
+      .map((shoot) => sanitizeForFirebase(shoot));
     const updates: Record<string, Shoot | Shoot[] | string | string[] | boolean | null> = {
       updatedAt,
       shoots: cleanShoots,
