@@ -20,6 +20,7 @@ const shootDetailModal = read('src/components/ShootDetailModal.tsx');
 const dashboardView = read('src/components/DashboardView.tsx');
 const contactsView = read('src/components/ContactsView.tsx');
 const bottomNav = read('src/components/BottomNav.tsx');
+const header = read('src/components/Header.tsx');
 const appView = read('src/App.tsx');
 const shootContext = read('src/context/ShootContext.tsx');
 const cloudSync = read('src/utils/cloudSync.ts');
@@ -81,6 +82,14 @@ const checks = [
   {
     name: 'cash-in-hand language is absent from visible components',
     pass: !/\bcash\b|cash in hand/i.test(componentText),
+  },
+  {
+    name: 'header keeps cloud sync silent and shows studio actions only',
+    pass:
+      !/Cloud Live|Local Only|isCloudEnabled|triggerSync|HardDrive|RefreshCw/.test(header) &&
+      /Studio Desk/.test(header) &&
+      /New Shoot/.test(header) &&
+      /Calendar/.test(header),
   },
   {
     name: 'README describes Firebase cloud sync and online-only payments',

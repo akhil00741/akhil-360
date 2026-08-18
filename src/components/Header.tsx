@@ -1,78 +1,54 @@
 import React from 'react';
 import { useShoots } from '../context/useShoots';
-import { Plus, Camera, Calendar, RefreshCw, Cloud, HardDrive } from 'lucide-react';
+import { Plus, Camera, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface HeaderProps {
   onOpenAppleSync?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenAppleSync }) => {
-  const { setIsCreateModalOpen, isSyncing, isCloudEnabled, triggerSync } = useShoots();
+  const { setIsCreateModalOpen } = useShoots();
+  const todayLabel = format(new Date(), 'EEE, dd MMM');
 
   return (
     <header className="sticky top-0 z-30 ios-glass-header px-4 py-3 sm:px-6">
-      <div className="max-w-6xl mx-auto flex items-center justify-start sm:justify-between gap-3">
-        
-        {/* Left Branding - Clean & Elegant */}
-        <div className="min-w-0 flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shadow-xs">
-            <Camera className="w-4 h-4 text-ios-blue stroke-[2.4]" />
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+        <div className="min-w-0 flex items-center gap-3">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1F1A17] shadow-ios ring-1 ring-black/5">
+            <Camera className="h-5 w-5 text-white stroke-[2.4]" />
+            <span className="absolute -right-1 -bottom-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#C9440A]" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-zinc-900 flex items-center gap-1 whitespace-nowrap">
-              AKHIL <span className="text-ios-blue">360</span>
+            <h1 className="flex items-center gap-1 text-[17px] sm:text-xl font-extrabold tracking-normal text-zinc-950 whitespace-nowrap leading-tight">
+              AKHIL <span className="text-[#C9440A]">360</span>
             </h1>
-            <p className="text-[11px] text-zinc-500 font-medium leading-none truncate">
-              Photography Studio
+            <p className="text-[11px] sm:text-xs text-zinc-500 font-semibold leading-none truncate">
+              Studio Desk
             </p>
           </div>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          
-          {/* Real-time Cloud Sync Button */}
-          <button
-            onClick={() => triggerSync()}
-            title={isCloudEnabled ? 'Cloud sync is enabled' : 'Local device storage is active'}
-            disabled={isSyncing}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center sm:space-x-1.5 px-2 sm:px-2.5 py-2 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-700 shadow-2xs transition-all active:scale-95 disabled:opacity-70"
-          >
-            {isSyncing ? (
-              <RefreshCw className="w-3.5 h-3.5 text-ios-blue animate-spin" />
-            ) : isCloudEnabled ? (
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <Cloud className="w-3.5 h-3.5 text-zinc-500" />
-              </div>
-            ) : (
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-zinc-400" />
-                <HardDrive className="w-3.5 h-3.5 text-zinc-500" />
-              </div>
-            )}
-            <span className="hidden sm:inline text-[11px]">
-              {isSyncing ? 'Syncing...' : isCloudEnabled ? 'Cloud Live' : 'Local Only'}
-            </span>
-          </button>
+        <div className="hidden md:flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white/80 px-3.5 py-2 shadow-2xs">
+          <Calendar className="h-4 w-4 text-[#C9440A]" />
+          <span className="text-xs font-extrabold text-zinc-800">{todayLabel}</span>
+        </div>
 
-          {/* Apple Calendar Quick Sync Icon */}
+        <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={onOpenAppleSync}
-            title="Apple Calendar Live Auto-Sync"
-            className="hidden sm:flex min-h-[44px] items-center space-x-1.5 px-3 py-2 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-800 shadow-2xs transition-all active:scale-95"
+            title="Apple Calendar"
+            className="hidden sm:flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-extrabold text-zinc-800 shadow-2xs transition-all hover:bg-zinc-50 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#C9440A]/25"
           >
-            <Calendar className="w-3.5 h-3.5 text-ios-blue" />
-            <span className="hidden sm:inline">Apple Cal</span>
+            <Calendar className="h-4 w-4 text-[#C9440A]" />
+            <span className="hidden lg:inline">Calendar</span>
           </button>
 
-
-          {/* New Shoot Primary Button */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="min-h-[44px] min-w-[104px] flex items-center justify-center space-x-1.5 px-3 sm:px-4 py-2 rounded-xl bg-[#B83A08] hover:bg-[#923006] text-white text-xs font-extrabold shadow-glow-blue ring-1 ring-[#923006]/20 transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#B83A08]/35"
+            className="flex min-h-[44px] min-w-[108px] items-center justify-center gap-1.5 rounded-2xl bg-[#B83A08] px-3.5 py-2 text-xs font-extrabold text-white shadow-glow-blue ring-1 ring-[#923006]/20 transition-all hover:bg-[#923006] active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#B83A08]/35 sm:px-4"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <Plus className="h-4 w-4 stroke-[2.5]" />
             <span>New Shoot</span>
           </button>
         </div>
